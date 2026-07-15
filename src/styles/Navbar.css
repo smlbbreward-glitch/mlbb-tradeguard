@@ -1,0 +1,57 @@
+.navbar {
+  height: 70px;
+  background: #0d1b2a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.logo {
+  color: #ffd54f;
+  font-size: 26px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.menu {
+  display: flex;
+  gap: 25px;
+  align-items: center;
+}
+
+.menu a {
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.menu a:hover {
+  color: #ffd54f;
+}
+
+.loginBtn,
+.signupBtn {
+  background: #2979ff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.loginBtn:hover,
+.signupBtn:hover {
+  background: #1565c0;
+}
+
+.signupBtn {
+  background: #ffb300;
+}
+
+.signupBtn:hover {
+  background: #f57f17;
+}

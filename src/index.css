@@ -1,0 +1,13 @@
+/* src/index.css */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body, html, #root {
+  background-color: #0f0f14 !important;
+  color: #ffffff !important;
+  min-height: 100vh;
+  font-family: sans-serif;
+}
