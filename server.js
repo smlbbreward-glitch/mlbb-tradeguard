@@ -180,13 +180,19 @@ app.delete('/api/admin/users/:username', authenticate, requireAdmin, (req, res) 
 
 // Verifications
 app.post('/api/verification/submit', authenticate, (req, res) => {
+  const rawFiles = Array.isArray(req.body.uploadedFiles) ? req.body.uploadedFiles : [];
+  const files = rawFiles.map((f, i) => ({
+    name: f?.name && f.name !== 'image.png' ? f.name : `upload_${i + 1}`,
+    type: f?.type || 'unknown',
+    dataUrl: typeof f?.dataUrl === 'string' ? f.dataUrl : ''
+  }));
   const submission = dbVerifications.create({
     username: req.user.username,
     idType: req.body.idType,
     address: req.body.address,
     fbLink1: req.body.fbLink1,
     fbLink2: req.body.fbLink2,
-    files: req.body.uploadedFiles || [],
+    files: files,
     status: 'pending'
   });
   res.status(201).json({ message: 'Verification submitted', id: submission.id });

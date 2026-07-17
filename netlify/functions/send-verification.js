@@ -26,8 +26,8 @@ export const handler = async (event) => {
 
   const files = Array.isArray(uploadedFiles) ? uploadedFiles : [];
   const fileCount = files.length;
-  const safeFiles = files.map((f) => ({
-    name: f?.name || 'file',
+  const safeFiles = files.map((f, i) => ({
+    name: f?.name && f.name !== 'image.png' ? f.name : `upload_${i + 1}`,
     type: f?.type || 'unknown'
   }));
 
@@ -38,7 +38,8 @@ export const handler = async (event) => {
     `Relative FB Link 1: ${fbLink1 || 'N/A'}\n` +
     `Relative FB Link 2: ${fbLink2 || 'N/A'}\n` +
     `Uploaded files (${fileCount}): ${safeFiles.map((f) => f.name).join(', ') || 'none'}\n\n` +
-    `Note: uploads are stored for manual admin review only; no image-processing model is invoked.\n` +
+    `Note: uploaded images are NOT attached or forwarded to any external model or AI service. ` +
+    `They are stored for manual admin review only.\n` +
     `Review and approve this user in the admin panel.`;
 
   if (resend) {
@@ -46,7 +47,7 @@ export const handler = async (event) => {
       await resend.emails.send({
         from: ALERT_FROM,
         to: ALERT_EMAIL,
-        subject: `🔎 New Verification — ${username}`,
+        subject: `New Verification - ${username}`,
         text
       });
     } catch (e) {
