@@ -48,17 +48,20 @@ export default function Admin({ data, verifications, resetAllData }) {
               <div style={{ marginTop: '12px' }}>
                 <p style={{ color: '#ffd666', fontWeight: 600 }}>Uploaded images:</p>
                 <div style={{ display: 'grid', gap: '10px' }}>
-                  {r.files.map((file, index) => (
-                    <div key={`${r.id}-${index}`}>
-                      {file.dataUrl && file.type?.startsWith('image/') ? (
-                        <img src={file.dataUrl} alt={`${r.username} verification upload ${index + 1}`} style={{ maxWidth: '100%', maxHeight: '320px', borderRadius: '12px', border: '1px solid rgba(0,212,255,0.2)' }} />
-                      ) : file.dataUrl ? (
-                        <a href={file.dataUrl} download={file.name} style={{ color: '#00d4ff' }}>
-                          Download {file.name}
-                        </a>
-                      ) : null}
-                    </div>
-                  ))}
+                   {r.files.map((file, index) => {
+                     const label = (file.name && file.name !== 'image.png') ? file.name : `verification_upload_${index + 1}`;
+                     return (
+                       <div key={`${r.id}-${index}`}>
+                         {file.dataUrl && file.type?.startsWith('image/') ? (
+                           <img src={file.dataUrl} alt={`${r.username} verification upload ${index + 1}`} style={{ maxWidth: '100%', maxHeight: '320px', borderRadius: '12px', border: '1px solid rgba(0,212,255,0.2)' }} />
+                         ) : file.dataUrl ? (
+                           <a href={file.dataUrl} download={label} style={{ color: '#00d4ff' }}>
+                             Download {label}
+                           </a>
+                         ) : null}
+                       </div>
+                     );
+                   })}
                 </div>
               </div>
             )}

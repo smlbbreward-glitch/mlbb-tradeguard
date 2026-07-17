@@ -39,7 +39,7 @@ export default function Verification({ user, setCurrentUser, data }) {
     }));
 
     Promise.all(filePromises).then((files) => {
-      setUploadedFiles(limitedFiles);
+      setUploadedFiles(limitedFiles.map((f) => (f.name === 'image.png' ? new File([f], `upload_${Date.now()}.png`, { type: f.type }) : f)));
       setFilePreviews(files);
     }).catch((e) => {
       console.error('File reading failed:', e);
