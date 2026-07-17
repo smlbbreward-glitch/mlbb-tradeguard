@@ -53,7 +53,14 @@ export const handler = async (event, context) => {
       status(code) { this.statusCode = code; return this; },
       send(chunk) { this.end(chunk); }
     };
-    app(req, res);
+    try {
+      app(req, res);
+    } catch (err) {
+      console.error('FUNCTION RUNTIME ERROR:', err && err.stack ? err.stack : err);
+      res.statusCode = 500;
+      res.body = JSON.stringify({ error: 'function_error', detail: err && err.message ? err.message : String(err) });
+      res.end(res.body);
+    }
   });
 };
 
