@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
-    "better-sqlite3": "^12.11.1",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.21.2",
@@ -25,6 +24,9 @@
     "react-icons": "^5.7.0",
     "react-router-dom": "^7.18.1",
     "resend": "^6.17.2"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^12.11.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

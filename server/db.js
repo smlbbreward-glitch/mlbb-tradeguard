@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const USE_SQLITE = process.env.DISABLE_SQLITE !== '1';
+const USE_SQLITE = process.env.ENABLE_SQLITE === '1';
 let impl;
 
 if (USE_SQLITE) {
