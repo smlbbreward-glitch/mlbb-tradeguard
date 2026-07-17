@@ -1,7 +1,17 @@
 import { app } from '../../server.js';
 
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+};
+
 export const handler = async (event, context) => {
   const { path, httpMethod, headers, body, queryStringParameters } = event;
+
+  if (httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers: CORS, body: '' };
+  }
 
   const query = new URLSearchParams(queryStringParameters || {}).toString();
   const clean = path
@@ -26,7 +36,7 @@ export const handler = async (event, context) => {
   return new Promise((resolve) => {
     const res = {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...CORS },
       body: '',
       setHeader(key, value) { this.headers[key] = value; },
       getHeader(key) { return this.headers[key]; },
@@ -46,3 +56,4 @@ export const handler = async (event, context) => {
     app(req, res);
   });
 };
+

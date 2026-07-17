@@ -72,6 +72,10 @@ const sendDevLoginAlert = async (username, req) => {
 app.use(cors());
 app.use(express.json());
 
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
 // Seed admin account
 if (!dbUsers.findByUsername(ADMIN_USERNAME)) {
   dbUsers.create(ADMIN_USERNAME, bcrypt.hashSync(ADMIN_PASSWORD, 10), 'developer');
