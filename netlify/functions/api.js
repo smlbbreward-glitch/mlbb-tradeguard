@@ -1,5 +1,3 @@
-import { app } from '../../server.js';
-
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -43,24 +41,22 @@ export const handler = async (event, context) => {
       json(payload) { this.body = JSON.stringify(payload); this.end(this.body); },
       end(chunk) {
         this.body = typeof chunk === 'string' ? chunk : chunk ? chunk.toString() : '';
-        resolve({
-          statusCode: this.statusCode,
-          headers: this.headers,
-          body: this.body,
-          isBase64Encoded: false
-        });
+        resolve({ statusCode: this.statusCode, headers: this.headers, body: this.body, isBase64Encoded: false });
       },
       status(code) { this.statusCode = code; return this; },
       send(chunk) { this.end(chunk); }
     };
-    try {
-      app(req, res);
-    } catch (err) {
-      console.error('FUNCTION RUNTIME ERROR:', err && err.stack ? err.stack : err);
-      res.statusCode = 500;
-      res.body = JSON.stringify({ error: 'function_error', detail: err && err.message ? err.message : String(err) });
-      res.end(res.body);
-    }
+
+    (async () => {
+      try {
+        const { app } = await import('../../server.js');
+        app(req, res);
+      } catch (err) {
+        console.error('FUNCTION RUNTIME ERROR:', err && err.stack ? err.stack : err);
+        res.statusCode = 500;
+        res.body = JSON.stringify({ error: 'function_error', detail: err && err.message ? err.message : String(err) });
+        res.end(res.body);
+      }
+    })();
   });
 };
-
