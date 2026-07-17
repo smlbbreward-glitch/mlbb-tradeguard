@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { mkdirSync } from 'fs';
+const require = (await import('node:module')).createRequire(import.meta.url);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -10,7 +11,7 @@ let impl;
 
 if (USE_SQLITE) {
   try {
-    const Database = (await import('better-sqlite3')).default;
+    const Database = require('better-sqlite3');
     const DB_PATH = process.env.DB_PATH || (process.env.NETLIFY ? '/tmp/tradeguard.db' : join(__dirname, '..', 'data', 'tradeguard.db'));
     mkdirSync(dirname(DB_PATH), { recursive: true });
     const db = new Database(DB_PATH);
@@ -19,39 +20,31 @@ if (USE_SQLITE) {
     db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'user',
-        is_verified INTEGER NOT NULL DEFAULT 0,
-        verification_status TEXT NOT NULL DEFAULT 'not_started',
-        decline_reason TEXT DEFAULT '',
-        created_at TEXT NOT NULL
+        username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user', is_verified INTEGER NOT NULL DEFAULT 0,
+        verification_status TEXT NOT NULL DEFAULT 'not_started', decline_reason TEXT DEFAULT '', created_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS posts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        seller TEXT NOT NULL, caption TEXT NOT NULL, price TEXT NOT NULL,
-        rank TEXT DEFAULT '', hero TEXT DEFAULT '', ml_id TEXT DEFAULT '',
-        server_id TEXT DEFAULT '', security_lock TEXT DEFAULT '',
-        platform TEXT DEFAULT 'Mobile Legends', premium INTEGER NOT NULL DEFAULT 0,
+        id INTEGER PRIMARY KEY AUTOINCREMENT, seller TEXT NOT NULL, caption TEXT NOT NULL, price TEXT NOT NULL,
+        rank TEXT DEFAULT '', hero TEXT DEFAULT '', ml_id TEXT DEFAULT '', server_id TEXT DEFAULT '',
+        security_lock TEXT DEFAULT '', platform TEXT DEFAULT 'Mobile Legends', premium INTEGER NOT NULL DEFAULT 0,
         status TEXT NOT NULL DEFAULT 'available', files_json TEXT DEFAULT '[]', created_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS orders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER,
-        caption TEXT DEFAULT '', price TEXT DEFAULT '', seller TEXT DEFAULT '', buyer TEXT DEFAULT '',
-        rank TEXT DEFAULT '', ml_id TEXT DEFAULT '', server_id TEXT DEFAULT '', platform TEXT DEFAULT '',
-        hero TEXT DEFAULT '', premium INTEGER NOT NULL DEFAULT 0, files_json TEXT DEFAULT '[]',
+        id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER, caption TEXT DEFAULT '', price TEXT DEFAULT '',
+        seller TEXT DEFAULT '', buyer TEXT DEFAULT '', rank TEXT DEFAULT '', ml_id TEXT DEFAULT '', server_id TEXT DEFAULT '',
+        platform TEXT DEFAULT '', hero TEXT DEFAULT '', premium INTEGER NOT NULL DEFAULT 0, files_json TEXT DEFAULT '[]',
         payment_method TEXT DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS midman_requests (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER, caption TEXT DEFAULT '',
-        buyer TEXT DEFAULT '', seller TEXT DEFAULT '', price TEXT DEFAULT '', payment_method TEXT DEFAULT '',
-        midman TEXT DEFAULT 'Pending', premium INTEGER NOT NULL DEFAULT 0, midman_fee INTEGER NOT NULL DEFAULT 0,
-        status TEXT NOT NULL DEFAULT 'Pending', chat_json TEXT DEFAULT '[]', created_at TEXT NOT NULL
+        id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER, caption TEXT DEFAULT '', buyer TEXT DEFAULT '',
+        seller TEXT DEFAULT '', price TEXT DEFAULT '', payment_method TEXT DEFAULT '', midman TEXT DEFAULT 'Pending',
+        premium INTEGER NOT NULL DEFAULT 0, midman_fee INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'Pending',
+        chat_json TEXT DEFAULT '[]', created_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS verifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, id_type TEXT DEFAULT '',
-        address TEXT DEFAULT '', fb_link1 TEXT DEFAULT '', fb_link2 TEXT DEFAULT '',
-        files_json TEXT DEFAULT '[]', status TEXT NOT NULL DEFAULT 'pending', submitted_at TEXT NOT NULL
+        id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, id_type TEXT DEFAULT '', address TEXT DEFAULT '',
+        fb_link1 TEXT DEFAULT '', fb_link2 TEXT DEFAULT '', files_json TEXT DEFAULT '[]', status TEXT NOT NULL DEFAULT 'pending', submitted_at TEXT NOT NULL
       );
       CREATE TABLE IF NOT EXISTS transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT, caption TEXT DEFAULT '', buyer TEXT DEFAULT '', seller TEXT DEFAULT '',
@@ -59,8 +52,8 @@ if (USE_SQLITE) {
         status TEXT NOT NULL DEFAULT 'Success', closed_by TEXT DEFAULT '', closed_at TEXT DEFAULT ''
       );
       CREATE TABLE IF NOT EXISTS notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, message TEXT NOT NULL,
-        type TEXT NOT NULL DEFAULT 'info', read INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
+        id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, message TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'info',
+        read INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
       );
     `);
 
@@ -124,7 +117,7 @@ if (USE_SQLITE) {
 }
 
 if (!impl) {
-  impl = await import('./db.fallback.js');
+  impl = require('./db.fallback.cjs');
 }
 
 export const dbUsers = impl.dbUsers;
