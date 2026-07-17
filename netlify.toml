@@ -6,11 +6,9 @@
   NODE_VERSION = "20"
 
 [functions]
-  node_bundling = "esbuild"
+  node_bundling = "nft"
   included_files = ["data/**"]
 
-# The API is served automatically by the Netlify function at
-# netlify/functions/api.js (which runs server.js). No separate backend needed.
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"

@@ -9,11 +9,18 @@ export const handler = async (event, context) => {
     .replace(/^\/+/, '');
   const url = `/api/${clean}${query ? `?${query}` : ''}`;
 
+  let parsedBody = body || '';
+  const contentType = (headers && (headers['content-type'] || headers['Content-Type'])) || '';
+  if (contentType.includes('application/json') && typeof parsedBody === 'string' && parsedBody) {
+    try { parsedBody = JSON.parse(parsedBody); } catch {}
+  }
+
   const req = {
     method: httpMethod,
     url,
     headers: headers || {},
-    body: body || ''
+    body: parsedBody,
+    _body: typeof parsedBody === 'object' && parsedBody !== null
   };
 
   return new Promise((resolve) => {
