@@ -1,80 +1,57 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiLogin, apiMe } from '../utils/api';
 import '../styles/Auth.css';
 
-export default function Login({ registeredUser, setCurrentUser }) {
+export default function Login({ setCurrentUser }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isError, setIsError] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const developerAccounts = [
-    { username: 'chrisford', password: 'chrisford' },
-    { username: 'devadmin', password: 'devadmin' },
-    { username: 'developer01', password: 'developer01' }
-  ];
-
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setIsError(false);
+    setLoading(true);
 
-    const normalizedUsername = username.trim().toLowerCase();
-    const matchingDeveloperAccount = developerAccounts.find(
-      (account) => account.username.toLowerCase() === normalizedUsername && account.password === password
-    );
-
-    if (matchingDeveloperAccount) {
-      const developerUser = {
-        username: matchingDeveloperAccount.username,
-        password: matchingDeveloperAccount.password,
-        isVerified: true,
-        verificationStatus: 'approved',
-        role: 'developer'
-      };
-
-      setCurrentUser(developerUser);
+    try {
+      const { token, user } = await apiLogin(username, password);
+      localStorage.setItem('authToken', token);
+      let fullUser = user;
+      try { fullUser = await apiMe(); } catch {}
+      setCurrentUser(fullUser);
       navigate('/marketplace');
-      return;
+    } catch (error) {
+      setIsError(true);
+      console.error('Login error:', error);
+    } finally {
+      setLoading(false);
     }
-
-    if (registeredUser && registeredUser.username === username && registeredUser.password === password) {
-      const signedInUser = {
-        ...registeredUser,
-        verificationStatus: registeredUser.isVerified ? 'approved' : registeredUser.verificationStatus || 'required'
-      };
-
-      setCurrentUser(signedInUser);
-
-      if (!signedInUser.isVerified) {
-        alert('⚠️ Verify your account before you can sell. You cannot post listings until verification is approved.');
-      }
-
-      navigate('/marketplace');
-      return;
-    }
-
-    setIsError(true);
-    setTimeout(() => setIsError(false), 500);
   };
 
   return (
     <div className="auth-container">
       <form onSubmit={handleLogin} className={`auth-card ${isError ? 'shake' : ''}`}>
-        <h2 style={{ color: '#fff', textAlign: 'center' }}>Login</h2>
-        {isError && <p style={{ color: '#ff4444', textAlign: 'center', fontSize: '14px' }}>⚠️ Incorrect credentials!</p>}
-        <input className="auth-input" type="text" placeholder="Username" onChange={(e) => setUsername(e.target.value)} />
-        <input className="auth-input" type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
-        <button type="submit" className="auth-button">Sign In</button>
-
-        <div style={{ marginTop: '12px', color: '#d7e0ff', fontSize: '13px' }}>
-          <p style={{ marginBottom: '6px' }}>Developer accounts:</p>
-          <ul style={{ paddingLeft: '18px', margin: 0 }}>
-            {developerAccounts.map((account) => (
-              <li key={account.username}>
-                <strong>{account.username}</strong> / {account.password}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <h2 style={{ fontFamily: "'Cinzel', serif", color: '#ffd666', textAlign: 'center', textShadow: '0 0 20px rgba(255,215,0,0.3)' }}>Login</h2>
+        {isError && <p style={{ color: '#ff7b7b', textAlign: 'center', fontSize: '14px' }}>⚠️ Incorrect credentials!</p>}
+        <input 
+          className="auth-input" 
+          type="text" 
+          placeholder="Username" 
+          onChange={(e) => setUsername(e.target.value)}
+          disabled={loading}
+        />
+        <input 
+          className="auth-input" 
+          type="password" 
+          placeholder="Password" 
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={loading}
+        />
+        <button type="submit" className="auth-button" disabled={loading}>
+          {loading ? 'Signing in...' : 'Sign In'}
+        </button>
       </form>
     </div>
   );

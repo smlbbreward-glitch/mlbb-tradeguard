@@ -2,13 +2,17 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Navbar.css';
 
-function Navbar({ user, setCurrentUser }) {
+function Navbar({ user, setCurrentUser, middlemanUsers, notifications, getUnreadCount, markAllNotificationsRead }) {
   const navigate = useNavigate();
 
   const handleLogout = () => {
     setCurrentUser(null);
     navigate('/');
   };
+
+  const isMiddleman = user?.role === 'middleman' || middlemanUsers?.includes(user?.username?.toLowerCase()) || user?.username === 'chrisford';
+  const isDeveloper = user?.role === 'developer' || user?.username?.toLowerCase() === 'chrisford';
+  const unreadCount = user ? getUnreadCount(user.username) : 0;
 
   return (
     <nav className="navbar">
@@ -23,16 +27,22 @@ function Navbar({ user, setCurrentUser }) {
         {user ? (
           <>
             <Link to="/profile">Profile</Link>
-            {user.role === 'developer' && (
+            <Link to="/midman">Chat</Link>
+            {isDeveloper && (
               <>
                 <Link to="/admin">Admin</Link>
                 <Link to="/users">Users</Link>
               </>
             )}
-            {(user.role === 'middleman' || user.username === 'chrisford') && <Link to="/midman">Middleman</Link>}
+            {isMiddleman && <Link to="/midman">Middleman</Link>}
             <button className="loginBtn" onClick={handleLogout}>
               Logout
             </button>
+            {unreadCount > 0 && (
+              <span className="mp-notification-badge" onClick={() => markAllNotificationsRead()}>
+                🔔 {unreadCount}
+              </span>
+            )}
           </>
         ) : (
           <>

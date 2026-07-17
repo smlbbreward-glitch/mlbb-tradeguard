@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/Auth.css';
+import { sanitizeFileName } from '../utils/files';
 
 export default function Marketplace({ user, setActiveTrade, marketplacePosts, setMarketplacePosts }) {
   const posts = marketplacePosts;
   const [activeTab, setActiveTab] = useState('browse');
+  const [isPremium, setIsPremium] = useState(false);
   const [formData, setFormData] = useState({ caption: '', price: '', rank: '', mlId: '', serverId: '', securityLock: '', files: [] });
   const [previewFiles, setPreviewFiles] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,7 +25,7 @@ export default function Marketplace({ user, setActiveTrade, marketplacePosts, se
 
     const preparedFiles = await Promise.all(
       selectedFiles.map(async (file) => ({
-        name: file.name,
+        name: sanitizeFileName(file.name),
         preview: file.type.startsWith('image/') ? await readFileAsDataUrl(file) : null,
         downloadUrl: await readFileAsDataUrl(file)
       }))
@@ -62,6 +64,7 @@ export default function Marketplace({ user, setActiveTrade, marketplacePosts, se
       id: Date.now(),
       seller: user?.username,
       status: 'available',
+      premium: isPremium,
       files: previewFiles.map((file) => ({
         name: file.name,
         preview: file.preview,
@@ -89,13 +92,14 @@ export default function Marketplace({ user, setActiveTrade, marketplacePosts, se
 
       <div style={{ display: 'flex', gap: '20px', marginBottom: '30px' }}>
         <button onClick={() => setActiveTab('browse')} className="auth-button" style={{ width: 'auto' }}>Browse Accounts</button>
-        <button onClick={() => setActiveTab('post')} className="auth-button" style={{ width: 'auto' }}>Post Account</button>
+        <button onClick={() => { setIsPremium(true); setActiveTab('post'); }} className="auth-button" style={{ width: 'auto', background: '#ff9800' }}>Premium Post Account</button>
+        <button onClick={() => { setIsPremium(false); setActiveTab('post'); }} className="auth-button" style={{ width: 'auto' }}>Post Account</button>
       </div>
 
       {activeTab === 'post' ? (
         <form onSubmit={handlePost} className="auth-card">
-          <h2 style={{ marginBottom: '20px' }}>Post Your Account</h2>
-          <p style={{ color: '#ffcc00', marginBottom: '12px' }}>Only Mobile Legends accounts are allowed here.</p>
+          <h2 style={{ marginBottom: '20px' }}>{isPremium ? 'Post Premium Account' : 'Post Your Account'}</h2>
+          <p style={{ color: '#ffcc00', marginBottom: '12px' }}>{isPremium ? 'Your listing will be highlighted and shown at the top.' : 'Only Mobile Legends accounts are allowed here.'}</p>
           {formError && <p style={{ color: '#ff4444', marginBottom: '10px' }}>{formError}</p>}
 
           <input className="auth-input" placeholder="Caption" required onChange={(e) => setFormData({ ...formData, caption: e.target.value })} />
@@ -149,14 +153,15 @@ export default function Marketplace({ user, setActiveTrade, marketplacePosts, se
             return [post.seller, post.caption, post.rank, post.platform]
               .filter(Boolean)
               .some((value) => String(value).toLowerCase().includes(term));
-          }).length === 0 ? <p style={{ color: '#aaa' }}>No accounts listed yet.</p> : posts.filter((post) => {
+          }).sort((a, b) => (b.premium ? 1 : 0) - (a.premium ? 1 : 0)).length === 0 ? <p style={{ color: '#aaa' }}>No accounts listed yet.</p> : posts.filter((post) => {
             const term = searchTerm.trim().toLowerCase();
             if (!term) return true;
             return [post.seller, post.caption, post.rank, post.platform]
               .filter(Boolean)
               .some((value) => String(value).toLowerCase().includes(term));
-          }).map((p) => (
-            <div key={p.id} className="auth-card" style={{ marginBottom: '20px', textAlign: 'left' }}>
+          }).sort((a, b) => (b.premium ? 1 : 0) - (a.premium ? 1 : 0)).map((p) => (
+            <div key={p.id} className="auth-card" style={{ marginBottom: '20px', textAlign: 'left', border: p.premium ? '2px solid #ff9800' : undefined }}>
+              {p.premium && <span style={{ background: '#ff9800', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', marginBottom: '8px', display: 'inline-block' }}>⭐ Premium</span>}
               <h3>{p.caption}</h3>
               <p><strong>Price:</strong> {p.price}</p>
               <p>Seller: {p.seller} | Rank: {p.rank}</p>

@@ -22,44 +22,48 @@ export default function TransactionHistory({ currentUser, transactionHistory }) 
 
   return (
     <div className="auth-container">
-      <div className="auth-card">
+      <div className="auth-card" style={{ maxWidth: '900px', textAlign: 'left' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
           <div>
-            <h1 style={{ color: '#ffcc00', marginBottom: '6px' }}>Transaction History</h1>
-            <p style={{ color: '#9eb0d5', margin: 0 }}>Completed and cancelled trades are recorded here.</p>
+            <h1 style={{ fontFamily: "'Cinzel', serif", color: '#ffd666', textShadow: '0 0 20px rgba(255,215,0,0.3)', marginBottom: '6px' }}>Transaction History</h1>
+            <p style={{ color: '#9a9ab0', margin: 0 }}>Completed and cancelled trades are recorded here.</p>
           </div>
-          <Link to="/profile" className="auth-button" style={{ display: 'inline-block', textDecoration: 'none', color: '#000' }}>
+          <Link to="/profile" className="auth-button" style={{ display: 'inline-block', textDecoration: 'none', color: '#000', width: 'auto' }}>
             Back to Profile
           </Link>
         </div>
 
         <div style={{ display: 'grid', gap: '16px' }}>
-          <div style={{ background: '#161622', padding: '16px', borderRadius: '10px' }}>
-            <h3 style={{ color: '#4caf50', marginBottom: '10px' }}>Successful Trades</h3>
+          <div className="auth-card" style={{ background: 'rgba(10,15,30,0.6)', padding: '16px', borderRadius: '16px' }}>
+            <h3 style={{ fontFamily: "'Cinzel', serif", color: '#4caf50', marginBottom: '10px' }}>Successful Trades</h3>
             {successfulTrades.length === 0 ? (
-              <p>No successful trades recorded yet.</p>
+              <p style={{ color: '#a0b4c8' }}>No successful trades recorded yet.</p>
             ) : successfulTrades.map((entry) => (
-              <div key={entry.id} style={{ background: '#0f1428', padding: '12px', borderRadius: '8px', marginBottom: '10px' }}>
-                <p><strong>{entry.caption}</strong></p>
-                <p>Buyer: {entry.buyer} | Seller: {entry.seller}</p>
-                <p>Price: {entry.price} | Midman: {entry.midman}</p>
+              <div key={entry.id} className="auth-card" style={{ marginBottom: '10px', textAlign: 'left' }}>
+                <p><strong style={{ color: '#ffd666' }}>{entry.caption}</strong></p>
+                <p style={{ color: '#a0b4c8' }}>Buyer: {entry.buyer} | Seller: {entry.seller}</p>
+                <p style={{ color: '#a0b4c8' }}>Price: {entry.price} | Midman: {entry.midman}</p>
+                {entry.premium && <p style={{ color: '#ffd666' }}>Premium: ⭐ Yes (Midman fee waived)</p>}
+                {!entry.premium && entry.midmanFee > 0 && <p style={{ color: '#ff9800' }}>Midman Fee: {entry.midmanFee} credits</p>}
                 <p>Status: <span style={{ color: '#4caf50', fontWeight: '700' }}>{entry.status}</span></p>
-                <p style={{ color: '#9eb0d5', fontSize: '13px' }}>Closed by {entry.closedBy} on {entry.closedAt}</p>
+                <p style={{ color: '#9a9ab0', fontSize: '13px' }}>Closed by {entry.closedBy} on {entry.closedAt}</p>
               </div>
             ))}
           </div>
 
-          <div style={{ background: '#161622', padding: '16px', borderRadius: '10px' }}>
-            <h3 style={{ color: '#ff4d4f', marginBottom: '10px' }}>Cancelled Trades</h3>
+          <div className="auth-card" style={{ background: 'rgba(10,15,30,0.6)', padding: '16px', borderRadius: '16px' }}>
+            <h3 style={{ fontFamily: "'Cinzel', serif", color: '#ff4d4f', marginBottom: '10px' }}>Cancelled Trades</h3>
             {cancelledTrades.length === 0 ? (
-              <p>No cancelled trades recorded yet.</p>
+              <p style={{ color: '#a0b4c8' }}>No cancelled trades recorded yet.</p>
             ) : cancelledTrades.map((entry) => (
-              <div key={entry.id} style={{ background: '#0f1428', padding: '12px', borderRadius: '8px', marginBottom: '10px' }}>
-                <p><strong>{entry.caption}</strong></p>
-                <p>Buyer: {entry.buyer} | Seller: {entry.seller}</p>
-                <p>Price: {entry.price} | Midman: {entry.midman}</p>
+              <div key={entry.id} className="auth-card" style={{ marginBottom: '10px', textAlign: 'left' }}>
+                <p><strong style={{ color: '#ffd666' }}>{entry.caption}</strong></p>
+                <p style={{ color: '#a0b4c8' }}>Buyer: {entry.buyer} | Seller: {entry.seller}</p>
+                <p style={{ color: '#a0b4c8' }}>Price: {entry.price} | Midman: {entry.midman}</p>
+                {entry.premium && <p style={{ color: '#ffd666' }}>Premium: ⭐ Yes (Midman fee waived)</p>}
+                {!entry.premium && entry.midmanFee > 0 && <p style={{ color: '#ff9800' }}>Midman Fee: {entry.midmanFee} credits</p>}
                 <p>Status: <span style={{ color: '#ff4d4f', fontWeight: '700' }}>{entry.status}</span></p>
-                <p style={{ color: '#9eb0d5', fontSize: '13px' }}>Closed by {entry.closedBy} on {entry.closedAt}</p>
+                <p style={{ color: '#9a9ab0', fontSize: '13px' }}>Closed by {entry.closedBy} on {entry.closedAt}</p>
               </div>
             ))}
           </div>
