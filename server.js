@@ -106,8 +106,15 @@ app.use(cors());
 app.use(express.json({ limit: '12mb' }));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const possibleDirs = [join(__dirname, 'dist'), join(process.cwd(), 'dist'), '/var/task/dist'];
+const possibleDirs = [
+  join(__dirname, 'dist'),
+  join(process.cwd(), 'dist'),
+  '/vercel/path0/dist',
+  '/vercel/output/dist',
+  '/var/task/dist'
+];
 const DIST_DIR = possibleDirs.find((d) => existsSync(join(d, 'index.html'))) || join(__dirname, 'dist');
+console.log('[server] DIST_DIR:', DIST_DIR, 'exists:', existsSync(join(DIST_DIR, 'index.html')));
 
 app.use(express.static(DIST_DIR));
 
@@ -519,6 +526,7 @@ app.get('*', (req, res) => {
     const html = readFileSync(join(DIST_DIR, 'index.html'), 'utf8');
     res.type('html').send(html);
   } catch (e) {
+    console.error('Failed to load app (catch-all):', e);
     res.status(500).json({ error: 'Failed to load app' });
   }
 });
