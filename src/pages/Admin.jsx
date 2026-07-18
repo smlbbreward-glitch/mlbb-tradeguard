@@ -10,6 +10,14 @@ export default function Admin({ data, verifications, resetAllData }) {
   const reason = searchParams.get('reason') || 'No further details provided.';
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [storage, setStorage] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d) => setStorage(d.storage))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +76,26 @@ export default function Admin({ data, verifications, resetAllData }) {
           </button>
         </div>
         <p style={{ color: '#9a9ab0', marginBottom: '20px' }}>Manage verification requests from here.</p>
+
+        {storage && (
+          <div style={{
+            marginBottom: '16px',
+            padding: '10px 14px',
+            borderRadius: '10px',
+            fontSize: '13px',
+            border: storage === 'persistent'
+              ? '1px solid rgba(76,175,80,0.4)'
+              : '1px solid rgba(255,170,0,0.5)',
+            background: storage === 'persistent'
+              ? 'rgba(76,175,80,0.1)'
+              : 'rgba(255,170,0,0.1)',
+            color: storage === 'persistent' ? '#7fe7a0' : '#ffd666'
+          }}>
+            {storage === 'persistent'
+              ? '✅ Persistent storage active — user data and verification photos are saved permanently.'
+              : '⚠️ Ephemeral storage — data lives in server memory and can disappear. Connect Upstash Redis in the Vercel dashboard to make it permanent.'}
+          </div>
+        )}
 
         {error && (
           <div style={{ color: '#ff7b7b', marginBottom: '16px', padding: '10px', borderRadius: '8px', background: 'rgba(255,123,123,0.1)', border: '1px solid rgba(255,123,123,0.3)' }}>

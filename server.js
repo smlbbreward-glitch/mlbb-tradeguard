@@ -89,7 +89,10 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', time: new Date().toISOString() });
+  const storage = (process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL)
+    ? 'persistent'
+    : 'ephemeral';
+  res.json({ status: 'ok', time: new Date().toISOString(), storage });
 });
 
 // Seed admin account
