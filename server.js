@@ -107,19 +107,24 @@ app.use(express.json({ limit: '12mb' }));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const possibleDirs = [
+  join(__dirname, 'public'),
   join(__dirname, 'dist'),
+  join(process.cwd(), 'public'),
   join(process.cwd(), 'dist'),
+  '/vercel/path0/public',
   '/vercel/path0/dist',
+  '/vercel/output/public',
   '/vercel/output/dist',
+  '/var/task/public',
   '/var/task/dist'
 ];
-const DIST_DIR = possibleDirs.find((d) => existsSync(join(d, 'index.html'))) || join(__dirname, 'dist');
+const DIST_DIR = possibleDirs.find((d) => existsSync(join(d, 'index.html'))) || join(__dirname, 'public');
 console.log('[server] DIST_DIR:', DIST_DIR);
 console.log('[server] index.html exists:', existsSync(join(DIST_DIR, 'index.html')));
 try {
   if (existsSync(DIST_DIR)) {
-    const entries = readFileSync(join(DIST_DIR, 'index.html'), 'utf8');
-    console.log('[server] index.html readable, length:', entries.length);
+    const html = readFileSync(join(DIST_DIR, 'index.html'), 'utf8');
+    console.log('[server] index.html readable, length:', html.length);
   }
 } catch (e) {
   console.log('[server] Could not read index.html:', e.message);

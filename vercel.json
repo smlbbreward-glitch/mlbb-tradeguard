@@ -19,7 +19,7 @@
   ],
   "functions": {
     "server.js": {
-      "includeFiles": "dist/**"
+      "includeFiles": "public/**"
     }
   }
 }
