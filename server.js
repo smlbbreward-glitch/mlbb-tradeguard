@@ -4,8 +4,6 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Resend } from 'resend';
 import { config } from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
 import {
   dbUsers,
@@ -18,9 +16,6 @@ import {
 } from './server/db.js';
 
 config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
