@@ -8,7 +8,19 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [storageWarning, setStorageWarning] = useState('');
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.storage !== 'persistent') {
+          setStorageWarning('ephemeral');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -47,6 +59,23 @@ export default function Register() {
 
   return (
     <div className="auth-container">
+      {storageWarning === 'ephemeral' && (
+        <div style={{
+          maxWidth: '400px',
+          margin: '0 auto 16px',
+          padding: '14px',
+          borderRadius: '14px',
+          background: 'rgba(255,170,0,0.12)',
+          border: '1px solid rgba(255,170,0,0.5)',
+          color: '#ffd666',
+          fontSize: '13px',
+          textAlign: 'center',
+          lineHeight: 1.5
+        }}>
+          ⚠️ <strong>Ephemeral storage detected.</strong> User accounts are saved in temporary memory and may disappear after server restarts.<br />
+          To make accounts <strong>permanent</strong>, connect <strong>Vercel KV</strong> in your Vercel dashboard (Storage → Create Database → KV).
+        </div>
+      )}
       <form onSubmit={handleRegister} className="auth-card">
         <h2 style={{ fontFamily: "'Cinzel', serif", color: '#ffd666', textAlign: 'center', textShadow: '0 0 20px rgba(255,215,0,0.3)', marginBottom: '20px' }}>Create MLBB Buy Account</h2>
         {error && <p style={{ color: '#ff7b7b', fontSize: '14px' }}>{error}</p>}

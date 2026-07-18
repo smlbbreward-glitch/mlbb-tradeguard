@@ -159,3 +159,11 @@ export async function apiCreateNotification(notificationData) {
 export async function apiResetAllData() {
   return parseResponse(await post('/admin/reset', {}, true));
 }
+
+export async function apiHeartbeat() {
+  return parseResponse(await post('/me/heartbeat', {}, true));
+}
+
+export async function apiGetOnlineUsers() {
+  return parseResponse(await get('/users/online', true));
+}

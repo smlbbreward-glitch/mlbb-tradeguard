@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import '../styles/Auth.css';
 import { apiPromoteUser, apiDeleteUser } from '../utils/api';
 
-export default function UserManagement({ currentUser, userAccounts, setCurrentUser, deleteUserAccount, middlemanUsers, setMiddlemanUsers, data }) {
+export default function UserManagement({ currentUser, userAccounts, setCurrentUser, deleteUserAccount, middlemanUsers, setMiddlemanUsers, data, isUserOnline }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [revealed, setRevealed] = useState({});
   const accounts = userAccounts || [];
@@ -65,11 +65,16 @@ export default function UserManagement({ currentUser, userAccounts, setCurrentUs
               <p style={{ color: '#a0b4c8' }}>No users found.</p>
             ) : (
               <ul style={{ paddingLeft: '18px', margin: 0 }}>
-                {filteredAccounts.map((account) => (
+                 {filteredAccounts.map((account) => {
+                  const online = typeof isUserOnline === 'function' ? isUserOnline(account.username) : false;
+                  return (
                   <li key={account.username} style={{ marginBottom: '12px', color: '#e6e6f0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                       <span>
                         <strong style={{ color: '#ffd666' }}>{account.username}</strong> — {account.role}
+                        <span style={{ marginLeft: '10px', fontSize: '12px', color: online ? '#4caf50' : '#9a9ab0' }}>
+                          {online ? '🟢 Online' : '⚫ Offline'}
+                        </span>
                         <span style={{ marginLeft: '10px', color: '#9a9ab0', fontSize: '13px' }}>
                           {revealed[account.username] ? (account.password || '(no password set)') : '••••••••'}
                           <button
@@ -94,11 +99,12 @@ export default function UserManagement({ currentUser, userAccounts, setCurrentUs
                           style={{ width: 'auto', background: 'linear-gradient(135deg, #c62828, #b71c1c)' }}
                         >
                           Delete
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
+                         </button>
+                       </div>
+                     </div>
+                   </li>
+                   );
+                 })}
               </ul>
             )}
           </div>

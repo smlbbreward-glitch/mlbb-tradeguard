@@ -54,6 +54,26 @@ export function useBackendData(user) {
     }
   }, [user]);
 
+  const refreshOrders = useCallback(async () => {
+    if (!user) return;
+    try {
+      const o = await apiGetOrders();
+      setOrders(o);
+    } catch (e) {
+      console.error('refreshOrders failed', e);
+    }
+  }, [user]);
+
+  const refreshRequests = useCallback(async () => {
+    if (!user) return;
+    try {
+      const r = await apiGetMiddlemanRequests();
+      setRequests(r);
+    } catch (e) {
+      console.error('refreshRequests failed', e);
+    }
+  }, [user]);
+
   const refreshUsers = useCallback(async () => {
     if (!user) return;
     try {
@@ -151,7 +171,7 @@ export function useBackendData(user) {
     posts, setPosts, orders, setOrders, requests, setRequests,
     transactions, setTransactions, notifications, setNotifications, users, setUsers,
     verifications, setVerifications,
-    loading, refresh, refreshPosts, refreshUsers, refreshVerifications, addNotification,
+    loading, refresh, refreshPosts, refreshOrders, refreshRequests, refreshUsers, refreshVerifications, addNotification,
     acceptRequest, sendMessage, closeRequest, deleteRequest,
     markNotificationRead, markAllNotificationsRead, getUnreadCount,
     resetAllData

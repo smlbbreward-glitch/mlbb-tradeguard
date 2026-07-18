@@ -68,12 +68,13 @@ function makeStore(persist) {
   const db = {
     dbUsers: {
       findByUsername: (u) => data.users.find((x) => x.username === u.toLowerCase()) || null,
-      list: () => data.users.map((u) => ({ id: u.id, username: u.username, role: u.role, is_verified: u.is_verified, verification_status: u.verification_status, password: u.password || '', created_at: u.created_at })),
-      create: ensure((u, h, role = 'user', plain = '') => { const row = { id: seq++, username: u.toLowerCase(), password_hash: h, password: plain || '', role, is_verified: 0, verification_status: 'not_started', created_at: new Date().toISOString() }; data.users.push(row); return row; }),
+      list: () => data.users.map((u) => ({ id: u.id, username: u.username, role: u.role, is_verified: u.is_verified, verification_status: u.verification_status, last_seen: u.last_seen || null, password: u.password || '', created_at: u.created_at })),
+      create: ensure((u, h, role = 'user', plain = '') => { const row = { id: seq++, username: u.toLowerCase(), password_hash: h, password: plain || '', role, is_verified: 0, verification_status: 'not_started', last_seen: new Date().toISOString(), created_at: new Date().toISOString() }; data.users.push(row); return row; }),
       setRole: ensure((u, role) => { const row = data.users.find((x) => x.username === u.toLowerCase()); if (row) row.role = role; }),
       updatePassword: ensure((u, h) => { const row = data.users.find((x) => x.username === u.toLowerCase()); if (row) row.password_hash = h; }),
       remove: ensure((u) => { data.users = data.users.filter((x) => x.username !== u.toLowerCase()); }),
-      setVerification: ensure((u, { isVerified, verificationStatus, declineReason = '' }) => { const row = data.users.find((x) => x.username === u.toLowerCase()); if (row) { row.is_verified = num(isVerified); row.verification_status = verificationStatus; row.decline_reason = declineReason; } })
+      setVerification: ensure((u, { isVerified, verificationStatus, declineReason = '' }) => { const row = data.users.find((x) => x.username === u.toLowerCase()); if (row) { row.is_verified = num(isVerified); row.verification_status = verificationStatus; row.decline_reason = declineReason; } }),
+      setLastSeen: ensure((u) => { const row = data.users.find((x) => x.username === u.toLowerCase()); if (row) row.last_seen = new Date().toISOString(); })
     },
     dbPosts: {
       list: () => data.posts.map(rowToPost),
@@ -153,5 +154,6 @@ export const dbRequests = db.dbRequests;
 export const dbVerifications = db.dbVerifications;
 export const dbTransactions = db.dbTransactions;
 export const dbNotifications = db.dbNotifications;
+export const dbSetLastSeen = db.dbUsers.setLastSeen;
 export const resetAll = db.resetAll;
 export default db;

@@ -16,6 +16,7 @@ import {
   dbVerifications,
   dbTransactions,
   dbNotifications,
+  dbSetLastSeen,
   resetAll
 } from './server/db.js';
 
@@ -29,6 +30,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'chrisford';
 const ALERT_EMAIL = process.env.ALERT_EMAIL || 'chrisfordgutierrez23@gmail.com';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const ALERT_FROM = process.env.ALERT_FROM || 'TradeGuard Alerts <onboarding@resend.dev>';
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || '';
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
@@ -66,6 +68,38 @@ const sendDevLoginAlert = async (username, req) => {
     );
   }
   await Promise.all(tasks);
+};
+
+const sendDiscordVerificationAlert = async (submission) => {
+  if (!DISCORD_WEBHOOK_URL) return;
+  try {
+    const files = Array.isArray(submission.files) ? submission.files : [];
+    const embeds = [
+      {
+        title: '🔔 New Verification Submission',
+        color: 0x00d4ff,
+        fields: [
+          { name: 'Username', value: submission.username || 'Unknown', inline: true },
+          { name: 'ID Type', value: submission.idType || 'N/A', inline: true },
+          { name: 'Status', value: submission.status || 'pending', inline: true },
+          { name: 'Address', value: submission.address || 'N/A' },
+          { name: 'FB Link 1', value: submission.fbLink1 || 'N/A' },
+          { name: 'FB Link 2', value: submission.fbLink2 || 'N/A' },
+          { name: 'Attachments', value: files.length ? `${files.length} file(s)` : 'None' }
+        ],
+        timestamp: new Date().toISOString()
+      }
+    ];
+    const payload = { username: 'TradeGuard Verifications', embeds };
+    const res = await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) console.error('Discord alert failed:', res.status);
+  } catch (e) {
+    console.error('Discord alert error:', e.message);
+  }
 };
 
 app.use(cors());
@@ -133,6 +167,7 @@ const serializeUser = (row) => ({
   role: row.role,
   isVerified: !!row.is_verified,
   verificationStatus: row.verification_status,
+  lastSeen: row.last_seen || null,
   password: row.password || ''
 });
 
@@ -157,6 +192,8 @@ app.post('/api/auth/login', async (req, res) => {
       await sendDevLoginAlert(row.username, req);
     }
 
+    await dbSetLastSeen(row.username);
+
     res.json({ token, user });
   } catch (error) {
     console.error('Login error:', error);
@@ -180,7 +217,7 @@ app.post('/api/auth/register', async (req, res) => {
     if (dbUsers.findByUsername(normalized)) {
       return res.status(409).json({ error: 'Username already exists' });
     }
-    dbUsers.create(normalized, await hashPassword(password), 'user', password);
+    await dbUsers.create(normalized, await hashPassword(password), 'user', password);
     res.status(201).json({ message: 'Account created successfully' });
   } catch (error) {
     console.error('Register error:', error);
@@ -193,17 +230,17 @@ app.get('/api/admin/users', authenticate, requireAdmin, (req, res) => {
   res.json(dbUsers.list());
 });
 
-app.post('/api/admin/users/:username/promote', authenticate, requireAdmin, (req, res) => {
+app.post('/api/admin/users/:username/promote', authenticate, requireAdmin, async (req, res) => {
   const username = req.params.username.toLowerCase();
   if (!dbUsers.findByUsername(username)) return res.status(404).json({ error: 'User not found' });
-  dbUsers.setRole(username, 'middleman');
+  await dbUsers.setRole(username, 'middleman');
   res.json({ message: 'User promoted to middleman' });
 });
 
-app.delete('/api/admin/users/:username', authenticate, requireAdmin, (req, res) => {
+app.delete('/api/admin/users/:username', authenticate, requireAdmin, async (req, res) => {
   const username = req.params.username.toLowerCase();
   if (username === ADMIN_USERNAME) return res.status(400).json({ error: 'Cannot delete admin' });
-  dbUsers.remove(username);
+  await dbUsers.remove(username);
   res.json({ message: 'User deleted' });
 });
 
@@ -213,14 +250,14 @@ app.post('/api/admin/reset', authenticate, requireAdmin, (req, res) => {
 });
 
 // Verifications
-app.post('/api/verification/submit', authenticate, (req, res) => {
+app.post('/api/verification/submit', authenticate, async (req, res) => {
   const rawFiles = Array.isArray(req.body.uploadedFiles) ? req.body.uploadedFiles : [];
   const files = rawFiles.map((f, i) => ({
     name: f?.name && f.name !== 'image.png' ? f.name : `upload_${i + 1}`,
     type: f?.type || 'unknown',
     dataUrl: typeof f?.dataUrl === 'string' ? f.dataUrl : ''
   }));
-  const submission = dbVerifications.create({
+  const submission = await dbVerifications.create({
     username: req.user.username,
     idType: req.body.idType,
     address: req.body.address,
@@ -228,6 +265,15 @@ app.post('/api/verification/submit', authenticate, (req, res) => {
     fbLink2: req.body.fbLink2,
     files: files,
     status: 'pending'
+  });
+  sendDiscordVerificationAlert({
+    username: submission.username,
+    idType: req.body.idType,
+    address: submission.address,
+    fbLink1: req.body.fbLink1,
+    fbLink2: req.body.fbLink2,
+    files: files,
+    status: submission.status
   });
   res.status(201).json({ message: 'Verification submitted', id: submission.id });
 });
@@ -247,20 +293,20 @@ app.get('/api/admin/verifications', authenticate, requireAdmin, (req, res) => {
   res.json(list);
 });
 
-app.post('/api/admin/verifications/:id/approve', authenticate, requireAdmin, (req, res) => {
+app.post('/api/admin/verifications/:id/approve', authenticate, requireAdmin, async (req, res) => {
   const v = dbVerifications.list().find((x) => String(x.id) === req.params.id);
   if (!v) return res.status(404).json({ error: 'Not found' });
-  dbVerifications.setStatus(v.id, 'approved');
-  dbUsers.setVerification(v.username, { isVerified: true, verificationStatus: 'approved' });
+  await dbVerifications.setStatus(v.id, 'approved');
+  await dbUsers.setVerification(v.username, { isVerified: true, verificationStatus: 'approved' });
   res.json({ message: 'Verification approved' });
 });
 
-app.post('/api/admin/verifications/:id/decline', authenticate, requireAdmin, (req, res) => {
+app.post('/api/admin/verifications/:id/decline', authenticate, requireAdmin, async (req, res) => {
   const v = dbVerifications.list().find((x) => String(x.id) === req.params.id);
   if (!v) return res.status(404).json({ error: 'Not found' });
   const reason = req.body.reason || 'No further details provided.';
-  dbVerifications.setStatus(v.id, 'declined');
-  dbUsers.setVerification(v.username, { isVerified: false, verificationStatus: 'declined', declineReason: reason });
+  await dbVerifications.setStatus(v.id, 'declined');
+  await dbUsers.setVerification(v.username, { isVerified: false, verificationStatus: 'declined', declineReason: reason });
   res.json({ message: 'Verification declined' });
 });
 
@@ -274,7 +320,7 @@ app.post('/api/marketplace/posts', authenticate, async (req, res) => {
   if (!user?.is_verified) {
     return res.status(403).json({ error: 'You must be verified before you can sell.' });
   }
-  const post = dbPosts.create({
+  const post = await dbPosts.create({
     seller: req.user.username,
     caption: req.body.caption,
     price: req.body.price,
@@ -292,13 +338,13 @@ app.post('/api/marketplace/posts', authenticate, async (req, res) => {
   res.status(201).json(post);
 });
 
-app.put('/api/marketplace/posts/:id', authenticate, (req, res) => {
+app.put('/api/marketplace/posts/:id', authenticate, async (req, res) => {
   const post = dbPosts.get(req.params.id);
   if (!post) return res.status(404).json({ error: 'Not found' });
   if (post.seller !== req.user.username && req.user.role !== 'developer') {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  const updated = dbPosts.update(post.id, {
+  const updated = await dbPosts.update(post.id, {
     caption: req.body.caption,
     price: req.body.price,
     rank: req.body.rank,
@@ -310,7 +356,7 @@ app.put('/api/marketplace/posts/:id', authenticate, (req, res) => {
   res.json(updated);
 });
 
-app.delete('/api/marketplace/posts/:id', authenticate, (req, res) => {
+app.delete('/api/marketplace/posts/:id', authenticate, async (req, res) => {
   console.log('DELETE post', { id: req.params.id, user: req.user?.username, role: req.user?.role });
   const post = dbPosts.get(req.params.id);
   if (!post) { console.log('DELETE post: not found', req.params.id); return res.status(404).json({ error: 'Not found' }); }
@@ -318,7 +364,7 @@ app.delete('/api/marketplace/posts/:id', authenticate, (req, res) => {
     console.log('DELETE post: forbidden', { seller: post.seller, user: req.user.username });
     return res.status(403).json({ error: 'Forbidden' });
   }
-  dbPosts.remove(post.id);
+  await dbPosts.remove(post.id);
   console.log('DELETE post: removed', post.id);
   res.json({ message: 'Post deleted' });
 });
@@ -331,8 +377,8 @@ app.get('/api/orders', authenticate, (req, res) => {
   res.json(all.filter((o) => o.buyer?.toLowerCase() === username || o.seller?.toLowerCase() === username));
 });
 
-app.post('/api/orders', authenticate, (req, res) => {
-  const order = dbOrders.create({
+app.post('/api/orders', authenticate, async (req, res) => {
+  const order = await dbOrders.create({
     ...req.body,
     platform: req.body.platform || 'Mobile Legends',
     buyer: req.user.username,
@@ -354,8 +400,8 @@ app.get('/api/middleman/requests', authenticate, (req, res) => {
   ));
 });
 
-app.post('/api/middleman/requests', authenticate, (req, res) => {
-  const request = dbRequests.create({
+app.post('/api/middleman/requests', authenticate, async (req, res) => {
+  const request = await dbRequests.create({
     ...req.body,
     status: 'Pending',
     chat: [
@@ -364,33 +410,33 @@ app.post('/api/middleman/requests', authenticate, (req, res) => {
     ],
     createdAt: new Date().toISOString()
   });
-  if (req.body.postId) dbPosts.updateStatus(req.body.postId, 'pending');
+  if (req.body.postId) await dbPosts.updateStatus(req.body.postId, 'pending');
   res.status(201).json(request);
 });
 
-app.post('/api/middleman/requests/:id/accept', authenticate, (req, res) => {
+app.post('/api/middleman/requests/:id/accept', authenticate, async (req, res) => {
   const request = dbRequests.get(req.params.id);
   if (!request) return res.status(404).json({ error: 'Not found' });
-  const updated = dbRequests.update(request.id, {
+  const updated = await dbRequests.update(request.id, {
     status: 'Accepted',
     midman: req.user.username
   });
   res.json(updated);
 });
 
-app.post('/api/middleman/requests/:id/message', authenticate, (req, res) => {
+app.post('/api/middleman/requests/:id/message', authenticate, async (req, res) => {
   const request = dbRequests.get(req.params.id);
   if (!request) return res.status(404).json({ error: 'Not found' });
   const chat = [...(request.chat || []), req.body.message];
-  const updated = dbRequests.update(request.id, { chat });
+  const updated = await dbRequests.update(request.id, { chat });
   res.json(updated);
 });
 
-app.post('/api/middleman/requests/:id/close', authenticate, (req, res) => {
+app.post('/api/middleman/requests/:id/close', authenticate, async (req, res) => {
   const request = dbRequests.get(req.params.id);
   if (!request) return res.status(404).json({ error: 'Not found' });
   const outcome = req.body.outcome || 'Success';
-  const transaction = dbTransactions.create({
+  const transaction = await dbTransactions.create({
     caption: request.caption,
     buyer: request.buyer,
     seller: request.seller,
@@ -402,18 +448,18 @@ app.post('/api/middleman/requests/:id/close', authenticate, (req, res) => {
     closedBy: req.user.username,
     closedAt: new Date().toLocaleString()
   });
-  dbRequests.remove(request.id);
+  await dbRequests.remove(request.id);
   if (request.postId) {
-    dbPosts.updateStatus(request.postId, outcome === 'Success' ? 'sold' : 'available');
+    await dbPosts.updateStatus(request.postId, outcome === 'Success' ? 'sold' : 'available');
   }
-  dbOrders.updateStatus(request.postId, request.buyer, outcome.toLowerCase());
+  await dbOrders.updateStatus(request.postId, request.buyer, outcome.toLowerCase());
   res.json(transaction);
 });
 
-app.delete('/api/middleman/requests/:id', authenticate, (req, res) => {
+app.delete('/api/middleman/requests/:id', authenticate, async (req, res) => {
   const request = dbRequests.get(req.params.id);
   if (!request) return res.status(404).json({ error: 'Not found' });
-  dbRequests.remove(request.id);
+  await dbRequests.remove(request.id);
   res.json({ message: 'Request deleted' });
 });
 
@@ -434,18 +480,18 @@ app.get('/api/notifications', authenticate, (req, res) => {
   res.json(dbNotifications.forUser(req.user.username));
 });
 
-app.post('/api/notifications', authenticate, (req, res) => {
-  const n = dbNotifications.create(req.user.username, req.body.message, req.body.type || 'info');
+app.post('/api/notifications', authenticate, async (req, res) => {
+  const n = await dbNotifications.create(req.user.username, req.body.message, req.body.type || 'info');
   res.status(201).json(n);
 });
 
-app.post('/api/notifications/:id/read', authenticate, (req, res) => {
-  dbNotifications.markRead(req.params.id);
+app.post('/api/notifications/:id/read', authenticate, async (req, res) => {
+  await dbNotifications.markRead(req.params.id);
   res.json({ message: 'Read' });
 });
 
-app.post('/api/notifications/read-all', authenticate, (req, res) => {
-  dbNotifications.markAllRead(req.user.username);
+app.post('/api/notifications/read-all', authenticate, async (req, res) => {
+  await dbNotifications.markAllRead(req.user.username);
   res.json({ message: 'All read' });
 });
 
@@ -453,6 +499,20 @@ app.get('/api/me', authenticate, (req, res) => {
   const row = dbUsers.findByUsername(req.user.username);
   if (!row) return res.status(404).json({ error: 'Not found' });
   res.json(serializeUser(row));
+});
+
+app.post('/api/me/heartbeat', authenticate, async (req, res) => {
+  await dbSetLastSeen(req.user.username);
+  res.json({ ok: true });
+});
+
+app.get('/api/users/online', authenticate, (req, res) => {
+  const all = dbUsers.list();
+  const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
+  const online = all
+    .filter((u) => u.last_seen && new Date(u.last_seen).getTime() > twoMinutesAgo)
+    .map((u) => ({ username: u.username, role: u.role, last_seen: u.last_seen }));
+  res.json(online);
 });
 
 app.get('*', (req, res) => {

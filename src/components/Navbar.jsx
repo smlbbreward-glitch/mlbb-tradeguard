@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Navbar.css';
 
-function Navbar({ user, setCurrentUser, middlemanUsers, notifications, getUnreadCount, markAllNotificationsRead }) {
+function Navbar({ user, setCurrentUser, middlemanUsers, notifications, getUnreadCount, markAllNotificationsRead, onlineCount }) {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -41,6 +41,11 @@ function Navbar({ user, setCurrentUser, middlemanUsers, notifications, getUnread
             {unreadCount > 0 && (
               <span className="mp-notification-badge" onClick={() => markAllNotificationsRead()}>
                 🔔 {unreadCount}
+              </span>
+            )}
+            {typeof onlineCount === 'number' && (
+              <span style={{ fontSize: '12px', color: '#4caf50', fontWeight: 600 }}>
+                ● {onlineCount} online
               </span>
             )}
           </>
