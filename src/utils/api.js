@@ -155,3 +155,7 @@ export async function apiGetNotifications() {
 export async function apiCreateNotification(notificationData) {
   return parseResponse(await post('/notifications', notificationData, true));
 }
+
+export async function apiResetAllData() {
+  return parseResponse(await post('/admin/reset', {}, true));
+}

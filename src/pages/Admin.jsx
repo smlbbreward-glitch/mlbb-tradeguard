@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import '../styles/Auth.css';
 import { apiApproveVerification, apiDeclineVerification } from '../utils/api';
@@ -8,18 +8,24 @@ export default function Admin({ data, verifications, resetAllData }) {
   const action = searchParams.get('action');
   const username = searchParams.get('username');
   const reason = searchParams.get('reason') || 'No further details provided.';
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const approveUser = async (uname) => {
-    const v = verifications.find((r) => r.username?.toLowerCase() === uname.toLowerCase());
-    if (v) await apiApproveVerification(v.id);
-    await data.refresh();
-  };
-
-  const declineUser = async (uname) => {
-    const v = verifications.find((r) => r.username?.toLowerCase() === uname.toLowerCase());
-    if (v) await apiDeclineVerification(v.id, reason);
-    await data.refresh();
-  };
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    if (data.refreshVerifications) {
+      data.refreshVerifications().catch((e) => {
+        if (!cancelled) setError('Failed to load verifications: ' + (e?.message || 'Unknown error'));
+      }).finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    } else {
+      setLoading(false);
+    }
+    return () => { cancelled = true; };
+  }, [data.refreshVerifications]);
 
   useEffect(() => {
     if (!username || !action) return;
@@ -28,14 +34,51 @@ export default function Admin({ data, verifications, resetAllData }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [action, username]);
 
+  const approveUser = async (uname) => {
+    const v = verifications.find((r) => r.username?.toLowerCase() === uname.toLowerCase());
+    if (v) await apiApproveVerification(v.id);
+    if (data.refreshVerifications) await data.refreshVerifications();
+  };
+
+  const declineUser = async (uname) => {
+    const v = verifications.find((r) => r.username?.toLowerCase() === uname.toLowerCase());
+    if (v) await apiDeclineVerification(v.id, reason);
+    if (data.refreshVerifications) await data.refreshVerifications();
+  };
+
+  const handleRefresh = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      if (data.refreshVerifications) await data.refreshVerifications();
+    } catch (e) {
+      setError('Refresh failed: ' + (e?.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="auth-container">
       <div className="auth-card" style={{ maxWidth: '900px', textAlign: 'left' }}>
-        <h1 style={{ fontFamily: "'Cinzel', serif", color: '#ffd666', textShadow: '0 0 20px rgba(255,215,0,0.3)', marginBottom: '8px' }}>Developer Dashboard</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
+          <h1 style={{ fontFamily: "'Cinzel', serif", color: '#ffd666', textShadow: '0 0 20px rgba(255,215,0,0.3)', margin: 0 }}>Developer Dashboard</h1>
+          <button onClick={handleRefresh} className="auth-button" disabled={loading} style={{ width: 'auto', background: 'linear-gradient(135deg, #00d4ff, #0099cc)' }}>
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
         <p style={{ color: '#9a9ab0', marginBottom: '20px' }}>Manage verification requests from here.</p>
 
+        {error && (
+          <div style={{ color: '#ff7b7b', marginBottom: '16px', padding: '10px', borderRadius: '8px', background: 'rgba(255,123,123,0.1)', border: '1px solid rgba(255,123,123,0.3)' }}>
+            {error}
+          </div>
+        )}
+
         <h3 style={{ fontFamily: "'Cinzel', serif", color: '#ffd666', marginBottom: '12px' }}>Verification Queue</h3>
-        {verifications.length === 0 ? (
+        {loading ? (
+          <p style={{ color: '#a0b4c8' }}>Loading verifications...</p>
+        ) : verifications.length === 0 ? (
           <p style={{ color: '#a0b4c8' }}>No pending requests.</p>
         ) : verifications.map((r) => (
           <div key={r.id} className="auth-card" style={{ marginBottom: '10px', textAlign: 'left' }}>

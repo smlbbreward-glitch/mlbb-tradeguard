@@ -11,7 +11,8 @@ import {
   apiSendRequestMessage,
   apiCloseRequest,
   apiDeleteRequest,
-  apiCreateNotification
+  apiCreateNotification,
+  apiResetAllData
 } from '../utils/api';
 
 export function useBackendData(user) {
@@ -46,13 +47,30 @@ export function useBackendData(user) {
       setTransactions(t);
       setNotifications(n);
       setVerifications(v);
-      if (user.role === 'developer' || user.role === 'admin') {
-        try { setUsers(await apiGetUsers()); } catch (e) { console.error(e); }
-      }
     } catch (e) {
       console.error('refresh failed', e);
     } finally {
       setLoading(false);
+    }
+  }, [user]);
+
+  const refreshUsers = useCallback(async () => {
+    if (!user) return;
+    try {
+      const userList = await apiGetUsers();
+      setUsers(userList);
+    } catch (e) {
+      console.error('refreshUsers failed', e);
+    }
+  }, [user]);
+
+  const refreshVerifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const list = await apiGetVerifications();
+      setVerifications(list);
+    } catch (e) {
+      console.error('refreshVerifications failed', e);
     }
   }, [user]);
 
@@ -113,12 +131,29 @@ export function useBackendData(user) {
     return notifications.filter((n) => n.username?.toLowerCase() === normalized && !n.read).length;
   }, [notifications]);
 
+  const resetAllData = useCallback(async () => {
+    try {
+      await apiResetAllData();
+      setPosts([]);
+      setOrders([]);
+      setRequests([]);
+      setTransactions([]);
+      setNotifications([]);
+      setUsers([]);
+      setVerifications([]);
+    } catch (e) {
+      console.error('reset failed', e);
+      throw e;
+    }
+  }, []);
+
   return {
     posts, setPosts, orders, setOrders, requests, setRequests,
     transactions, setTransactions, notifications, setNotifications, users, setUsers,
     verifications, setVerifications,
-    loading, refresh, refreshPosts, addNotification,
+    loading, refresh, refreshPosts, refreshUsers, refreshVerifications, addNotification,
     acceptRequest, sendMessage, closeRequest, deleteRequest,
-    markNotificationRead, markAllNotificationsRead, getUnreadCount
+    markNotificationRead, markAllNotificationsRead, getUnreadCount,
+    resetAllData
   };
 }

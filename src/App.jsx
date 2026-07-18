@@ -11,6 +11,7 @@ import MidmanHub from './pages/MidmanHub';
 import Admin from './pages/Admin';
 import UserManagement from './pages/UserManagement';
 import TransactionHistory from './pages/TransactionHistory';
+import ShareListing from './pages/ShareListing';
 import { useBackendData } from './hooks/useData';
 
 function App() {
@@ -47,13 +48,14 @@ function App() {
       <Navbar user={currentUser} setCurrentUser={setCurrentUser} middlemanUsers={middlemanUsers} notifications={data.notifications} getUnreadCount={data.getUnreadCount} markAllNotificationsRead={data.markAllNotificationsRead} />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/marketplace" element={currentUser ? <Marketplace user={currentUser} marketplacePosts={data.posts} setMarketplacePosts={data.refreshPosts} middlemanRequests={data.requests} setMiddlemanRequests={data.setRequests} orderHistory={data.orders} setOrderHistory={data.setOrders} notifications={data.notifications} addNotification={data.addNotification} markNotificationRead={data.markNotificationRead} getUnreadCount={data.getUnreadCount} /> : <Navigate to="/login" replace />} />
+        <Route path="/marketplace" element={<Marketplace user={currentUser} marketplacePosts={data.posts} setMarketplacePosts={data.refreshPosts} middlemanRequests={data.requests} setMiddlemanRequests={data.setRequests} orderHistory={data.orders} setOrderHistory={data.setOrders} notifications={data.notifications} addNotification={data.addNotification} markNotificationRead={data.markNotificationRead} getUnreadCount={data.getUnreadCount} />} />
+        <Route path="/listing/:encodedData" element={<ShareListing />} />
         <Route path="/profile" element={currentUser ? <Profile user={currentUser} marketplacePosts={data.posts} setMarketplacePosts={data.setPosts} transactionHistory={data.transactions} data={data} /> : <Navigate to="/login" replace />} />
         <Route path="/login" element={<Login setCurrentUser={setCurrentUser} />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify" element={currentUser ? <Verification user={currentUser} setCurrentUser={setCurrentUser} data={data} /> : <Navigate to="/login" replace />} />
         <Route path="/midman" element={currentUser ? <MidmanHub currentUser={currentUser} activeTrade={null} setTradeData={() => {}} middlemanRequests={data.requests} setMiddlemanRequests={data.setRequests} setTransactionHistory={data.setTransactions} setMarketplacePosts={data.setPosts} orderHistory={data.orders} setOrderHistory={data.setOrders} middlemanUsers={middlemanUsers} addNotification={data.addNotification} notifications={data.notifications} transactionHistory={data.transactions} data={data} /> : <Navigate to="/login" replace />} />
-        <Route path="/admin" element={isDeveloper ? <Admin data={data} verifications={data.verifications} /> : <Navigate to="/marketplace" replace />} />
+        <Route path="/admin" element={isDeveloper ? <Admin data={data} verifications={data.verifications} resetAllData={data.resetAllData} /> : <Navigate to="/marketplace" replace />} />
         <Route path="/users" element={isDeveloper ? <UserManagement currentUser={currentUser} userAccounts={data.users || []} setCurrentUser={setCurrentUser} deleteUserAccount={deleteUserAccount} middlemanUsers={middlemanUsers} setMiddlemanUsers={setMiddlemanUsers} data={data} /> : <Navigate to="/marketplace" replace />} />
         <Route path="/transactions" element={currentUser ? <TransactionHistory currentUser={currentUser} transactionHistory={data.transactions} /> : <Navigate to="/login" replace />} />
       </Routes>

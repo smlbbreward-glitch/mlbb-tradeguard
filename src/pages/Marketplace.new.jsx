@@ -5,6 +5,35 @@ import '../styles/Marketplace.css';
 import { apiCreatePost, apiCreateOrder, apiCreateMiddlemanRequest } from '../utils/api';
 import { sanitizeFileName } from '../utils/files';
 
+const encodePostToShare = (post) => {
+  try {
+    const json = JSON.stringify(post);
+    return btoa(encodeURIComponent(json)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  } catch {
+    return null;
+  }
+};
+
+const getShareUrl = (post) => {
+  const encoded = encodePostToShare(post);
+  if (!encoded) return null;
+  return `${window.location.origin}/listing/${encoded}`;
+};
+
+const copyShareLink = async (post) => {
+  const url = getShareUrl(post);
+  if (!url) {
+    alert('Failed to create share link. The listing may contain too much data.');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    alert('Shareable link copied to clipboard! Send it to your friends.');
+  } catch {
+    prompt('Copy this link to share:', url);
+  }
+};
+
 const PREMIUM_POST_FEE = 500;
 const MIDMAN_FEE_RATE = 0.05;
 const MIDMAN_FEE_MIN = 10;
@@ -638,6 +667,13 @@ export default function MarketplaceNew({ user, setActiveTrade, marketplacePosts,
                        ⚡ Buy Now
                     </button>
                   )}
+                  <button
+                    className="mp-btn mp-btn-ghost"
+                    onClick={() => copyShareLink(p)}
+                    title="Copy shareable link"
+                  >
+                    🔗 Share
+                  </button>
                 </div>
               </div>
             ))

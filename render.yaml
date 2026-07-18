@@ -1,27 +1,18 @@
 services:
   - type: web
     name: mlbb-tradeguard
-    runtime: node
+    env: node
     plan: free
-    buildCommand: npm install
-    startCommand: npm run server
-    healthCheckPath: /
+    buildCommand: npm install && npm run build
+    startCommand: node server.js
     envVars:
-      NODE_VERSION:
-        value: "20"
-      PORT:
-        value: "3001"
-      JWT_SECRET:
-        sync: false
-      ADMIN_USERNAME:
-        sync: false
-      ADMIN_PASSWORD:
-        sync: false
-      ALERT_EMAIL:
-        sync: false
-      RESEND_API_KEY:
-        sync: false
-      ALERT_FROM:
-        sync: false
-      DB_PATH:
-        value: "./data/tradeguard.db"
+      - key: NODE_VERSION
+        value: 20
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_USERNAME
+        value: chrisford
+      - key: ADMIN_PASSWORD
+        value: chrisford
+      - key: PORT
+        value: 3001

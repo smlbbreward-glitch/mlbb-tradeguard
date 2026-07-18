@@ -4,6 +4,9 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Resend } from 'resend';
 import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { readFileSync, existsSync } from 'fs';
+import { dirname, join } from 'path';
 
 import {
   dbUsers,
@@ -12,7 +15,8 @@ import {
   dbRequests,
   dbVerifications,
   dbTransactions,
-  dbNotifications
+  dbNotifications,
+  resetAll
 } from './server/db.js';
 
 config();
@@ -67,13 +71,35 @@ const sendDevLoginAlert = async (username, req) => {
 app.use(cors());
 app.use(express.json());
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DIST_DIR = join(__dirname, 'dist');
+
+app.use('/assets', express.static(join(DIST_DIR, 'assets')));
+app.use('/favicon.svg', express.static(join(DIST_DIR, 'favicon.svg')));
+app.use('/icons.svg', express.static(join(DIST_DIR, 'icons.svg')));
+
+app.get('/', (req, res) => {
+  try {
+    const html = readFileSync(join(DIST_DIR, 'index.html'), 'utf8');
+    res.type('html').send(html);
+  } catch (e) {
+    console.error('Failed to serve index.html:', e);
+    res.status(500).json({ error: 'Failed to load app' });
+  }
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
 // Seed admin account
-if (!dbUsers.findByUsername(ADMIN_USERNAME)) {
-  dbUsers.create(ADMIN_USERNAME, bcrypt.hashSync(ADMIN_PASSWORD, 10), 'developer');
+const adminRow = dbUsers.findByUsername(ADMIN_USERNAME);
+if (!adminRow) {
+  dbUsers.create(ADMIN_USERNAME, bcrypt.hashSync(ADMIN_PASSWORD, 10), 'developer', ADMIN_PASSWORD);
+  dbUsers.setVerification(ADMIN_USERNAME, { isVerified: true, verificationStatus: 'approved' });
+} else {
+  dbUsers.updatePassword(ADMIN_USERNAME, bcrypt.hashSync(ADMIN_PASSWORD, 10));
+  if (adminRow.role !== 'developer') dbUsers.setRole(ADMIN_USERNAME, 'developer');
   dbUsers.setVerification(ADMIN_USERNAME, { isVerified: true, verificationStatus: 'approved' });
 }
 
@@ -103,7 +129,8 @@ const serializeUser = (row) => ({
   username: row.username,
   role: row.role,
   isVerified: !!row.is_verified,
-  verificationStatus: row.verification_status
+  verificationStatus: row.verification_status,
+  password: row.password || ''
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -150,7 +177,7 @@ app.post('/api/auth/register', async (req, res) => {
     if (dbUsers.findByUsername(normalized)) {
       return res.status(409).json({ error: 'Username already exists' });
     }
-    dbUsers.create(normalized, await hashPassword(password), 'user');
+    dbUsers.create(normalized, await hashPassword(password), 'user', password);
     res.status(201).json({ message: 'Account created successfully' });
   } catch (error) {
     console.error('Register error:', error);
@@ -175,6 +202,11 @@ app.delete('/api/admin/users/:username', authenticate, requireAdmin, (req, res) 
   if (username === ADMIN_USERNAME) return res.status(400).json({ error: 'Cannot delete admin' });
   dbUsers.remove(username);
   res.json({ message: 'User deleted' });
+});
+
+app.post('/api/admin/reset', authenticate, requireAdmin, (req, res) => {
+  resetAll();
+  res.json({ message: 'All data reset successfully. Admin accounts preserved.' });
 });
 
 // Verifications
@@ -420,10 +452,21 @@ app.get('/api/me', authenticate, (req, res) => {
   res.json(serializeUser(row));
 });
 
-export { app };
+app.get('*', (req, res) => {
+  try {
+    const html = readFileSync(join(DIST_DIR, 'index.html'), 'utf8');
+    res.type('html').send(html);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load app' });
+  }
+});
 
-if (!process.env.NETLIFY) {
-  app.listen(PORT, () => {
+const isServerless = process.env.VERCEL === '1' || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+if (!isServerless) {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
+
+export default app;

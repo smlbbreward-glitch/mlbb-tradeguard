@@ -74,20 +74,7 @@ export default function Verification({ user, setCurrentUser, data }) {
       await apiSubmitVerification(payload);
       sent = true;
     } catch (e) {
-      console.error('primary verification submit failed', e);
-    }
-
-    if (!sent) {
-      try {
-        const res = await fetch('/.netlify/functions/send-verification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: submission.username, ...payload })
-        });
-        sent = res.ok;
-      } catch (e) {
-        console.error('netlify verification submit failed', e);
-      }
+      console.error('verification submit failed', e);
     }
 
     setTimeout(() => {

@@ -10,7 +10,7 @@ const safeParse = (json) => { try { return JSON.parse(json) || []; } catch { ret
 const fallback = (() => {
   try {
    const cwd = process.cwd();
-   const LOCAL_DIR = (process.env.NETLIFY === 'true' || cwd === '/var/task') ? '/tmp' : join(cwd, 'data');
+   const LOCAL_DIR = (cwd === '/var/task' || cwd === '/home/site/wwwroot') ? '/tmp' : join(cwd, 'data');
    const DB_PATH = process.env.DB_PATH || join(LOCAL_DIR, 'tradeguard.json');
    const empty = () => ({ users: [], posts: [], orders: [], midman_requests: [], verifications: [], transactions: [], notifications: [] });
    const load = () => { try { if (!existsSync(DB_PATH)) return empty(); return JSON.parse(readFileSync(DB_PATH, 'utf8')); } catch { return empty(); } };
@@ -24,9 +24,10 @@ const fallback = (() => {
   return {
     dbUsers: {
       findByUsername: (u) => data.users.find((x) => x.username === u.toLowerCase()) || null,
-      list: () => data.users.map((u) => ({ id: u.id, username: u.username, role: u.role, is_verified: u.is_verified, verification_status: u.verification_status, created_at: u.created_at })),
-      create: (u, h, role = 'user') => { const row = { id: nextId(), username: u.toLowerCase(), password_hash: h, role, is_verified: 0, verification_status: 'not_started', created_at: new Date().toISOString() }; data.users.push(row); save(data); return row; },
+      list: () => data.users.map((u) => ({ id: u.id, username: u.username, role: u.role, is_verified: u.is_verified, verification_status: u.verification_status, password: u.password || '', created_at: u.created_at })),
+      create: (u, h, role = 'user', plain = '') => { const row = { id: nextId(), username: u.toLowerCase(), password_hash: h, password: plain || '', role, is_verified: 0, verification_status: 'not_started', created_at: new Date().toISOString() }; data.users.push(row); save(data); return row; },
       setRole: (u, role) => { const row = data.users.find((x) => x.username === u.toLowerCase()); if (row) { row.role = role; save(data); } },
+      updatePassword: (u, h) => { const row = data.users.find((x) => x.username === u.toLowerCase()); if (row) { row.password_hash = h; save(data); } },
       remove: (u) => { data.users = data.users.filter((x) => x.username !== u.toLowerCase()); save(data); },
       setVerification: (u, { isVerified, verificationStatus, declineReason = '' }) => { const row = data.users.find((x) => x.username === u.toLowerCase()); if (row) { row.is_verified = num(isVerified); row.verification_status = verificationStatus; row.decline_reason = declineReason; save(data); } }
     },
@@ -66,6 +67,16 @@ const fallback = (() => {
       create: (u, message, type = 'info') => { const n = { id: nextId(), username: u.toLowerCase(), message, type, read: 0, created_at: new Date().toISOString() }; data.notifications.push(n); save(data); return n; },
       markRead: (id) => { const n = data.notifications.find((x) => x.id === Number(id)); if (n) { n.read = 1; save(data); } },
       markAllRead: (u) => { data.notifications.filter((n) => n.username === u.toLowerCase()).forEach((n) => { n.read = 1; }); save(data); }
+    },
+    resetAll: () => {
+      data.users = data.users.filter((u) => u.role === 'developer' || u.role === 'admin');
+      data.posts = [];
+      data.orders = [];
+      data.midman_requests = [];
+      data.verifications = [];
+      data.transactions = [];
+      data.notifications = [];
+      save(data);
     }
   };
  } catch (e) {
@@ -73,14 +84,15 @@ const fallback = (() => {
    const mem = { users: [], posts: [], orders: [], midman_requests: [], verifications: [], transactions: [], notifications: [] };
    let mid = 1;
    return {
-     dbUsers: { findByUsername: (u) => mem.users.find((x) => x.username === u.toLowerCase()) || null, list: () => mem.users, create: (u, h, role = 'user') => { const r = { id: mid++, username: u.toLowerCase(), password_hash: h, role, is_verified: 0, verification_status: 'not_started', created_at: new Date().toISOString() }; mem.users.push(r); return r; }, setRole: () => {}, remove: () => {}, setVerification: () => {} },
+      dbUsers: { findByUsername: (u) => mem.users.find((x) => x.username === u.toLowerCase()) || null, list: () => mem.users, create: (u, h, role = 'user', plain = '') => { const r = { id: mid++, username: u.toLowerCase(), password_hash: h, password: plain || '', role, is_verified: 0, verification_status: 'not_started', created_at: new Date().toISOString() }; mem.users.push(r); return r; }, setRole: () => {}, updatePassword: () => {}, remove: () => {}, setVerification: () => {} },
      dbPosts: { list: () => mem.posts, get: () => null, create: (p) => { const r = { id: mid++, ...p }; mem.posts.push(r); return r; }, updateStatus: () => {}, update: () => null, remove: () => {} },
      dbOrders: { list: () => mem.orders, get: () => null, create: (o) => { const r = { id: mid++, ...o }; mem.orders.push(r); return r; }, updateStatus: () => {} },
      dbRequests: { list: () => mem.midman_requests, get: () => null, create: (q) => { const r = { id: mid++, ...q }; mem.midman_requests.push(r); return r; }, update: () => null, remove: () => {} },
      dbVerifications: { list: () => mem.verifications, create: (v) => { const r = { id: mid++, ...v }; mem.verifications.push(r); return r; }, setStatus: () => {} },
      dbTransactions: { list: () => mem.transactions, create: (t) => { const r = { id: mid++, ...t }; mem.transactions.push(r); return r; } },
-     dbNotifications: { list: () => mem.notifications, forUser: () => [], create: (u, m) => ({ id: mid++, username: u, message: m }), markRead: () => {}, markAllRead: () => {} }
-   };
+      dbNotifications: { list: () => mem.notifications, forUser: () => [], create: (u, m) => ({ id: mid++, username: u, message: m }), markRead: () => {}, markAllRead: () => {} },
+      resetAll: () => { mem.users = mem.users.filter((u) => u.role === 'developer' || u.role === 'admin'); mem.posts = []; mem.orders = []; mem.midman_requests = []; mem.verifications = []; mem.transactions = []; mem.notifications = []; }
+    };
  }
 })();
 
@@ -93,4 +105,5 @@ export const dbRequests = impl.dbRequests;
 export const dbVerifications = impl.dbVerifications;
 export const dbTransactions = impl.dbTransactions;
 export const dbNotifications = impl.dbNotifications;
+export const resetAll = impl.resetAll;
 export default impl;

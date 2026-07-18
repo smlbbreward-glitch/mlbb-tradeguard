@@ -1,10 +1,23 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import '../styles/Auth.css';
 import { apiPromoteUser, apiDeleteUser } from '../utils/api';
 
 export default function UserManagement({ currentUser, userAccounts, setCurrentUser, deleteUserAccount, middlemanUsers, setMiddlemanUsers, data }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [revealed, setRevealed] = useState({});
   const accounts = userAccounts || [];
+  const pollTimer = useRef(null);
+
+  useEffect(() => {
+    if (!data.refreshUsers) return;
+    data.refreshUsers();
+    pollTimer.current = setInterval(() => {
+      data.refreshUsers();
+    }, 4000);
+    return () => {
+      if (pollTimer.current) clearInterval(pollTimer.current);
+    };
+  }, [data.refreshUsers]);
 
   const filteredAccounts = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -15,7 +28,7 @@ export default function UserManagement({ currentUser, userAccounts, setCurrentUs
   const handlePromote = async (username) => {
     try {
       await apiPromoteUser(username);
-      await data.refresh();
+      if (data.refreshUsers) await data.refreshUsers();
     } catch (e) { alert(e.message); }
   };
 
@@ -23,15 +36,20 @@ export default function UserManagement({ currentUser, userAccounts, setCurrentUs
     try {
       await apiDeleteUser(usernameToDelete);
       deleteUserAccount(usernameToDelete);
-      await data.refresh();
+      if (data.refreshUsers) await data.refreshUsers();
     } catch (e) { alert(e.message); }
   };
 
   return (
     <div className="auth-container">
       <div className="auth-card" style={{ maxWidth: '900px', textAlign: 'left' }}>
-        <h1 style={{ fontFamily: "'Cinzel', serif", color: '#ffd666', textShadow: '0 0 20px rgba(255,215,0,0.3)', marginBottom: '8px' }}>User Management</h1>
-        <p style={{ color: '#9a9ab0', marginBottom: '20px' }}>Search all registered users, remove them, and promote selected users as middlemen.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
+          <h1 style={{ fontFamily: "'Cinzel', serif", color: '#ffd666', textShadow: '0 0 20px rgba(255,215,0,0.3)', margin: 0 }}>User Management</h1>
+          <button onClick={() => data.refreshUsers()} className="auth-button" style={{ width: 'auto', background: 'linear-gradient(135deg, #00d4ff, #0099cc)' }}>
+            Refresh Users
+          </button>
+        </div>
+        <p style={{ color: '#9a9ab0', marginBottom: '20px' }}>Total accounts: <strong style={{ color: '#ffd666' }}>{accounts.length}</strong>. List updates live every few seconds. Search, promote, or remove users.</p>
 
         <div className="auth-card" style={{ background: 'rgba(10,15,30,0.6)', padding: '20px', borderRadius: '16px' }}>
           <input
@@ -52,6 +70,15 @@ export default function UserManagement({ currentUser, userAccounts, setCurrentUs
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                       <span>
                         <strong style={{ color: '#ffd666' }}>{account.username}</strong> — {account.role}
+                        <span style={{ marginLeft: '10px', color: '#9a9ab0', fontSize: '13px' }}>
+                          {revealed[account.username] ? (account.password || '(no password set)') : '••••••••'}
+                          <button
+                            onClick={() => setRevealed((prev) => ({ ...prev, [account.username]: !prev[account.username] }))}
+                            style={{ marginLeft: '6px', background: 'none', border: '1px solid rgba(0,212,255,0.4)', color: '#00d4ff', borderRadius: '6px', cursor: 'pointer', padding: '1px 8px', fontSize: '12px' }}
+                          >
+                            {revealed[account.username] ? 'Hide' : 'Show'}
+                          </button>
+                        </span>
                       </span>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button
