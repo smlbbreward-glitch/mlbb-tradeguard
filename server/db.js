@@ -1,5 +1,5 @@
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+const require = createRequire((typeof import.meta !== 'undefined' && import.meta.url) ? import.meta.url : process.cwd() + '/');
 
 const USE_SQLITE = process.env.ENABLE_SQLITE === '1';
 let impl;
