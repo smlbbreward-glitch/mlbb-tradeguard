@@ -8,17 +8,15 @@ const bool = (v) => v === 1 || v === true;
 const safeParse = (json) => { try { return JSON.parse(json) || []; } catch { return []; } };
 
 const fallback = (() => {
+ try {
   const { mkdirSync, readFileSync, writeFileSync, existsSync } = require('fs');
   const { join } = require('path');
   const cwd = process.cwd();
-  const fsMod = require('fs');
-  const tryWritable = (dir) => { try { fsMod.mkdirSync(dir, { recursive: true }); return true; } catch { return false; } };
-  const LOCAL_DIR = (process.env.NETLIFY === 'true' || !tryWritable(join(cwd, 'data'))) ? '/tmp' : join(cwd, 'data');
+  const LOCAL_DIR = (process.env.NETLIFY === 'true' || cwd === '/var/task') ? '/tmp' : join(cwd, 'data');
   const DB_PATH = process.env.DB_PATH || join(LOCAL_DIR, 'tradeguard.json');
-  mkdirSync(LOCAL_DIR, { recursive: true });
   const empty = () => ({ users: [], posts: [], orders: [], midman_requests: [], verifications: [], transactions: [], notifications: [] });
-  const load = () => { if (!existsSync(DB_PATH)) return empty(); try { return JSON.parse(readFileSync(DB_PATH, 'utf8')); } catch { return empty(); } };
-  const save = (data) => writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+  const load = () => { try { if (!existsSync(DB_PATH)) return empty(); return JSON.parse(readFileSync(DB_PATH, 'utf8')); } catch { return empty(); } };
+  const save = (d) => { try { require('fs').mkdirSync(require('path').dirname(DB_PATH), { recursive: true }); writeFileSync(DB_PATH, JSON.stringify(d, null, 2)); } catch (e) { console.error('DB save failed (in-memory only):', e.message); } };
   let data = load();
   let seq = Math.max(0, ...Object.values(data).flatMap((arr) => (Array.isArray(arr) ? arr.map((r) => r.id || 0) : [0]))) + 1;
   const nextId = () => seq++;
@@ -72,6 +70,20 @@ const fallback = (() => {
       markAllRead: (u) => { data.notifications.filter((n) => n.username === u.toLowerCase()).forEach((n) => { n.read = 1; }); save(data); }
     }
   };
+ } catch (e) {
+   console.error('Fallback DB init failed, using in-memory store:', e.message);
+   const mem = { users: [], posts: [], orders: [], midman_requests: [], verifications: [], transactions: [], notifications: [] };
+   let mid = 1;
+   return {
+     dbUsers: { findByUsername: (u) => mem.users.find((x) => x.username === u.toLowerCase()) || null, list: () => mem.users, create: (u, h, role = 'user') => { const r = { id: mid++, username: u.toLowerCase(), password_hash: h, role, is_verified: 0, verification_status: 'not_started', created_at: new Date().toISOString() }; mem.users.push(r); return r; }, setRole: () => {}, remove: () => {}, setVerification: () => {} },
+     dbPosts: { list: () => mem.posts, get: () => null, create: (p) => { const r = { id: mid++, ...p }; mem.posts.push(r); return r; }, updateStatus: () => {}, update: () => null, remove: () => {} },
+     dbOrders: { list: () => mem.orders, get: () => null, create: (o) => { const r = { id: mid++, ...o }; mem.orders.push(r); return r; }, updateStatus: () => {} },
+     dbRequests: { list: () => mem.midman_requests, get: () => null, create: (q) => { const r = { id: mid++, ...q }; mem.midman_requests.push(r); return r; }, update: () => null, remove: () => {} },
+     dbVerifications: { list: () => mem.verifications, create: (v) => { const r = { id: mid++, ...v }; mem.verifications.push(r); return r; }, setStatus: () => {} },
+     dbTransactions: { list: () => mem.transactions, create: (t) => { const r = { id: mid++, ...t }; mem.transactions.push(r); return r; } },
+     dbNotifications: { list: () => mem.notifications, forUser: () => [], create: (u, m) => ({ id: mid++, username: u, message: m }), markRead: () => {}, markAllRead: () => {} }
+   };
+ }
 })();
 
 let impl = null;
