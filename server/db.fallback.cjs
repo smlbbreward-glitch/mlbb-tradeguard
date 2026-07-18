@@ -1,8 +1,9 @@
-const { dirname, join } = require('path');
 const { mkdirSync, readFileSync, writeFileSync, existsSync } = require('fs');
+const { join } = require('path');
 
-const DB_PATH = process.env.DB_PATH || (process.env.NETLIFY ? '/tmp/tradeguard.json' : join(__dirname, '..', 'data', 'tradeguard.json'));
-mkdirSync(dirname(DB_PATH), { recursive: true });
+const LOCAL_DIR = process.env.NETLIFY ? '/tmp' : join(process.cwd(), 'data');
+const DB_PATH = process.env.DB_PATH || join(LOCAL_DIR, 'tradeguard.json');
+mkdirSync(LOCAL_DIR, { recursive: true });
 
 const empty = () => ({ users: [], posts: [], orders: [], midman_requests: [], verifications: [], transactions: [], notifications: [] });
 const load = () => { if (!existsSync(DB_PATH)) return empty(); try { return JSON.parse(readFileSync(DB_PATH, 'utf8')); } catch { return empty(); } };
