@@ -10,7 +10,10 @@ const safeParse = (json) => { try { return JSON.parse(json) || []; } catch { ret
 const fallback = (() => {
   const { mkdirSync, readFileSync, writeFileSync, existsSync } = require('fs');
   const { join } = require('path');
-  const LOCAL_DIR = process.env.NETLIFY ? '/tmp' : join(process.cwd(), 'data');
+  const cwd = process.cwd();
+  const fsMod = require('fs');
+  const tryWritable = (dir) => { try { fsMod.mkdirSync(dir, { recursive: true }); return true; } catch { return false; } };
+  const LOCAL_DIR = (process.env.NETLIFY === 'true' || !tryWritable(join(cwd, 'data'))) ? '/tmp' : join(cwd, 'data');
   const DB_PATH = process.env.DB_PATH || join(LOCAL_DIR, 'tradeguard.json');
   mkdirSync(LOCAL_DIR, { recursive: true });
   const empty = () => ({ users: [], posts: [], orders: [], midman_requests: [], verifications: [], transactions: [], notifications: [] });
