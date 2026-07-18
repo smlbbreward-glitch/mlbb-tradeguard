@@ -1,11 +1,5 @@
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { mkdirSync } from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const USE_SQLITE = process.env.ENABLE_SQLITE === '1';
 let impl;
@@ -13,8 +7,11 @@ let impl;
 if (USE_SQLITE) {
   try {
     const Database = require('better-sqlite3');
-    const DB_PATH = process.env.DB_PATH || (process.env.NETLIFY ? '/tmp/tradeguard.db' : join(__dirname, '..', 'data', 'tradeguard.db'));
-    mkdirSync(dirname(DB_PATH), { recursive: true });
+    const { mkdirSync, existsSync } = require('fs');
+    const { join } = require('path');
+    const localDb = join(process.cwd(), 'data', 'tradeguard.db');
+    const DB_PATH = process.env.DB_PATH || (process.env.NETLIFY ? '/tmp/tradeguard.db' : localDb);
+    mkdirSync(require('path').dirname(DB_PATH), { recursive: true });
     const db = new Database(DB_PATH);
     db.pragma('journal_mode = WAL');
 
