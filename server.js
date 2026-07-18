@@ -114,7 +114,16 @@ const possibleDirs = [
   '/var/task/dist'
 ];
 const DIST_DIR = possibleDirs.find((d) => existsSync(join(d, 'index.html'))) || join(__dirname, 'dist');
-console.log('[server] DIST_DIR:', DIST_DIR, 'exists:', existsSync(join(DIST_DIR, 'index.html')));
+console.log('[server] DIST_DIR:', DIST_DIR);
+console.log('[server] index.html exists:', existsSync(join(DIST_DIR, 'index.html')));
+try {
+  if (existsSync(DIST_DIR)) {
+    const entries = readFileSync(join(DIST_DIR, 'index.html'), 'utf8');
+    console.log('[server] index.html readable, length:', entries.length);
+  }
+} catch (e) {
+  console.log('[server] Could not read index.html:', e.message);
+}
 
 app.use(express.static(DIST_DIR));
 

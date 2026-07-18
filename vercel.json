@@ -1,7 +1,6 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
   "builds": [
     {
       "src": "server.js",
@@ -15,7 +14,12 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/$1"
+      "dest": "server.js"
     }
-  ]
+  ],
+  "functions": {
+    "server.js": {
+      "includeFiles": "dist/**"
+    }
+  }
 }
