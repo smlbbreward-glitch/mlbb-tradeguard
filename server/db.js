@@ -2,16 +2,41 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 
 const USE_SQLITE = process.env.ENABLE_SQLITE === '1';
-const USE_KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
 const KV_KEY = process.env.KV_KEY || 'tradeguard:db';
 
-let kv = null;
-if (USE_KV) {
-  try {
-    const mod = await import('@vercel/kv');
-    kv = mod.kv;
-  } catch (e) {
-    console.error('Failed to load @vercel/kv, falling back to file store:', e.message);
+// Upstash Redis (recommended Vercel storage integration) uses a REST API
+// with these two env vars, injected automatically when you add the
+// Upstash integration from the Vercel Marketplace.
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+let remoteStore = null;
+if (UPSTASH_URL && UPSTASH_TOKEN) {
+  const upstash = async (cmd, ...args) => {
+    const res = await fetch(`${UPSTASH_URL}/${cmd}/${args.map(encodeURIComponent).join('/')}`, {
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
+    });
+    const json = await res.json();
+    return json.result;
+  };
+  remoteStore = {
+    get: async () => { const raw = await upstash('get', KV_KEY); return raw ? JSON.parse(raw) : null; },
+    set: async (value) => { await upstash('set', KV_KEY, JSON.stringify(value)); }
+  };
+  console.log('[db] Using Upstash Redis persistence');
+} else {
+  const USE_KV = !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+  if (USE_KV) {
+    try {
+      const mod = await import('@vercel/kv');
+      remoteStore = {
+        get: async () => { try { return (await mod.kv.get(KV_KEY)) || null; } catch { return null; } },
+        set: async (value) => { try { await mod.kv.set(KV_KEY, value); } catch (e) { console.error('KV save failed:', e.message); } }
+      };
+      console.log('[db] Using Vercel KV persistence');
+    } catch (e) {
+      console.error('Failed to load @vercel/kv, falling back to file store:', e.message);
+    }
   }
 }
 
@@ -102,10 +127,10 @@ function makeStore(persist) {
 }
 
 let persist;
-if (kv) {
+if (remoteStore) {
   persist = {
-    load: async () => { try { return (await kv.get(KV_KEY)) || null; } catch { return null; } },
-    save: async (d) => { try { await kv.set(KV_KEY, d); } catch (e) { console.error('KV save failed:', e.message); } }
+    load: async () => { try { return (await remoteStore.get()) || null; } catch { return null; } },
+    save: async (d) => { try { await remoteStore.set(d); } catch (e) { console.error('Remote DB save failed:', e.message); } }
   };
 } else {
   const cwd = process.cwd();
@@ -119,8 +144,7 @@ if (kv) {
 
 const { db, load, save } = makeStore(persist);
 await load();
-if (kv) console.log('[db] Using Vercel KV persistence');
-else console.log('[db] Using local file persistence at', persist === undefined ? 'n/a' : 'configured path');
+console.log('[db] persistence mode:', remoteStore ? 'remote (Upstash/KV)' : 'local file');
 
 export const dbUsers = db.dbUsers;
 export const dbPosts = db.dbPosts;
