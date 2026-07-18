@@ -1,5 +1,5 @@
-import { createRequire } from 'module';
-const require = createRequire((typeof import.meta !== 'undefined' && import.meta.url) ? import.meta.url : process.cwd() + '/');
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
 
 const USE_SQLITE = process.env.ENABLE_SQLITE === '1';
 
@@ -8,15 +8,13 @@ const bool = (v) => v === 1 || v === true;
 const safeParse = (json) => { try { return JSON.parse(json) || []; } catch { return []; } };
 
 const fallback = (() => {
- try {
-  const { mkdirSync, readFileSync, writeFileSync, existsSync } = require('fs');
-  const { join } = require('path');
-  const cwd = process.cwd();
-  const LOCAL_DIR = (process.env.NETLIFY === 'true' || cwd === '/var/task') ? '/tmp' : join(cwd, 'data');
-  const DB_PATH = process.env.DB_PATH || join(LOCAL_DIR, 'tradeguard.json');
-  const empty = () => ({ users: [], posts: [], orders: [], midman_requests: [], verifications: [], transactions: [], notifications: [] });
-  const load = () => { try { if (!existsSync(DB_PATH)) return empty(); return JSON.parse(readFileSync(DB_PATH, 'utf8')); } catch { return empty(); } };
-  const save = (d) => { try { require('fs').mkdirSync(require('path').dirname(DB_PATH), { recursive: true }); writeFileSync(DB_PATH, JSON.stringify(d, null, 2)); } catch (e) { console.error('DB save failed (in-memory only):', e.message); } };
+  try {
+   const cwd = process.cwd();
+   const LOCAL_DIR = (process.env.NETLIFY === 'true' || cwd === '/var/task') ? '/tmp' : join(cwd, 'data');
+   const DB_PATH = process.env.DB_PATH || join(LOCAL_DIR, 'tradeguard.json');
+   const empty = () => ({ users: [], posts: [], orders: [], midman_requests: [], verifications: [], transactions: [], notifications: [] });
+   const load = () => { try { if (!existsSync(DB_PATH)) return empty(); return JSON.parse(readFileSync(DB_PATH, 'utf8')); } catch { return empty(); } };
+   const save = (d) => { try { mkdirSync(dirname(DB_PATH), { recursive: true }); writeFileSync(DB_PATH, JSON.stringify(d, null, 2)); } catch (e) { console.error('DB save failed (in-memory only):', e.message); } };
   let data = load();
   let seq = Math.max(0, ...Object.values(data).flatMap((arr) => (Array.isArray(arr) ? arr.map((r) => r.id || 0) : [0]))) + 1;
   const nextId = () => seq++;
