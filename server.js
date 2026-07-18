@@ -119,16 +119,11 @@ const possibleDirs = [
   '/var/task/dist'
 ];
 const DIST_DIR = possibleDirs.find((d) => existsSync(join(d, 'index.html'))) || join(__dirname, 'public');
-console.log('[server] DIST_DIR:', DIST_DIR);
-console.log('[server] index.html exists:', existsSync(join(DIST_DIR, 'index.html')));
-try {
-  if (existsSync(DIST_DIR)) {
-    const html = readFileSync(join(DIST_DIR, 'index.html'), 'utf8');
-    console.log('[server] index.html readable, length:', html.length);
-  }
-} catch (e) {
-  console.log('[server] Could not read index.html:', e.message);
-}
+
+app.use((req, res, next) => {
+  console.log('[server]', req.method, req.url, '->', req.path);
+  next();
+});
 
 app.use(express.static(DIST_DIR));
 
@@ -140,6 +135,10 @@ app.get('/', (req, res) => {
     console.error('Failed to serve index.html:', e);
     res.status(500).json({ error: 'Failed to load app' });
   }
+});
+
+app.head('/', (req, res) => {
+  res.status(200).end();
 });
 
 app.get('/api/health', (req, res) => {
