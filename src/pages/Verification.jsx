@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import '../styles/Auth.css';
 import { apiSubmitVerification } from '../utils/api';
-import { sanitizeFileName } from '../utils/files';
+import { sanitizeFileName, compressImageDataUrl } from '../utils/files';
 
 export default function Verification({ user, setCurrentUser, data }) {
   const [formData, setFormData] = useState({
@@ -71,7 +71,11 @@ export default function Verification({ user, setCurrentUser, data }) {
 
     let sent = false;
     try {
-      await apiSubmitVerification(payload);
+      const compressed = await Promise.all(
+        filePreviews.map(async (f) => ({ ...f, dataUrl: await compressImageDataUrl(f.dataUrl) }))
+      );
+      const compressedPayload = { ...payload, uploadedFiles: compressed };
+      await apiSubmitVerification(compressedPayload);
       sent = true;
     } catch (e) {
       console.error('verification submit failed', e);
