@@ -106,11 +106,10 @@ app.use(cors());
 app.use(express.json({ limit: '12mb' }));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DIST_DIR = join(__dirname, 'dist');
+const possibleDirs = [join(__dirname, 'dist'), join(process.cwd(), 'dist'), '/var/task/dist'];
+const DIST_DIR = possibleDirs.find((d) => existsSync(join(d, 'index.html'))) || join(__dirname, 'dist');
 
-app.use('/assets', express.static(join(DIST_DIR, 'assets')));
-app.use('/favicon.svg', express.static(join(DIST_DIR, 'favicon.svg')));
-app.use('/icons.svg', express.static(join(DIST_DIR, 'icons.svg')));
+app.use(express.static(DIST_DIR));
 
 app.get('/', (req, res) => {
   try {
